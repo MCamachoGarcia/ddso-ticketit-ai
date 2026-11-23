@@ -9,7 +9,7 @@ import Perfil from "../screens/Perfil/Perfil";
 import DetalleEvento from "../screens/DetalleEvento/DetalleEvento";
 import DetalleCompra from "../screens/DetalleCompra/DetalleCompra";
 import Chat from "../screens/Chat/Chat";
-import ReseniasOrganizador from "../screens/ReseniasOrganizador/ReseniasOrganizador";
+import Resenias from "../screens/Resenias/Resenias";
 
 const Pestanias = createBottomTabNavigator();
 const Pila = createNativeStackNavigator();
@@ -40,7 +40,7 @@ export function NavegacionComprador() {
       <Pila.Screen name="Chat" component={Chat} options={{ title: TITULOS_COMPARTIDOS.Chat }} />
       <Pila.Screen
         name="ReseniasOrganizador"
-        component={ReseniasOrganizador}
+        component={Resenias}
         options={{ title: TITULOS_COMPARTIDOS.ReseniasOrganizador }}
       />
     </Pila.Navigator>

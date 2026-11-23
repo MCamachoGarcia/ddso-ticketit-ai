@@ -8,7 +8,7 @@ import Perfil from "../screens/Perfil/Perfil";
 import GestionEvento from "../screens/GestionEvento/GestionEvento";
 import DetalleCompra from "../screens/DetalleCompra/DetalleCompra";
 import Chat from "../screens/Chat/Chat";
-import ReseniasOrganizador from "../screens/ReseniasOrganizador/ReseniasOrganizador";
+import Resenias from "../screens/Resenias/Resenias";
 
 const Pestanias = createBottomTabNavigator();
 const Pila = createNativeStackNavigator();
@@ -43,9 +43,11 @@ export function NavegacionOrganizador() {
       <Pila.Screen name="Chat" component={Chat} options={{ title: TITULOS_COMPARTIDOS.Chat }} />
       <Pila.Screen
         name="ReseniasOrganizador"
-        component={ReseniasOrganizador}
+        component={Resenias}
         options={{ title: TITULOS_COMPARTIDOS.ReseniasOrganizador }}
       />
+      {/* La misma pantalla de reseñas, con las de un solo evento (desde la gestión de un evento realizado) */}
+      <Pila.Screen name="ReseniasEvento" component={Resenias} options={{ title: "Reseñas del evento" }} />
     </Pila.Navigator>
   );
 }

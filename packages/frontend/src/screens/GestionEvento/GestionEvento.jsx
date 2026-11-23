@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Pantalla } from "../../components/Pantalla/Pantalla";
@@ -10,7 +10,9 @@ import { ListaPaginada, paginaSiguiente } from "../../components/ListaPaginada/L
 import { obtenerEvento } from "../../services/eventosService";
 import { obtenerComprasDelEvento } from "../../services/comprasService";
 import { ESTADOS_COMPRA } from "../../utils/estadosCompra";
-import { formatearFechaLarga, formatearHora } from "../../utils/formato";
+import { formatearFechaLarga, formatearHora, formatearPuntaje } from "../../utils/formato";
+import { Estrellas } from "../../components/Estrellas/Estrellas";
+import { obtenerReseniasDeEvento } from "../../services/reseniasService";
 import { COLORES } from "../../styles/colores";
 
 // Gestión de un evento (O1, O2): cuántas entradas quedan de cada tipo y las compras, filtrables por estado.
@@ -42,7 +44,11 @@ export default function GestionEvento({ route, navigation }) {
 
   const encabezado = evento.data && (
     <View className="mb-3 gap-4">
-      <ResumenDelEvento evento={evento.data} onEditar={() => navigation.navigate("EditarEvento", { eventoId })} />
+      <ResumenDelEvento
+        evento={evento.data}
+        onEditar={() => navigation.navigate("EditarEvento", { eventoId })}
+        onVerResenias={() => navigation.navigate("ReseniasEvento", { eventoId, nombreEvento: evento.data.nombre })}
+      />
       {compras.data && <Disponibilidad disponibilidad={compras.data.disponibilidad} />}
 
       <View className="gap-2">
@@ -77,7 +83,37 @@ export default function GestionEvento({ route, navigation }) {
   );
 }
 
-function ResumenDelEvento({ evento, onEditar }) {
+// Un evento realizado ya puede tener reseñas: su puntaje y el acceso a leerlas
+function AccesoAResenias({ evento, onPress }) {
+  // Solo hace falta el puntaje: se pide una sola reseña. Con la misma clave base que la pantalla de reseñas.
+  const { data } = useQuery({
+    queryKey: ["resenias", "evento", evento.id, "puntaje"],
+    queryFn: () => obtenerReseniasDeEvento(evento.id, 1, 1),
+  });
+  const sinResenias = !data || data.promedio === null;
+  const texto = sinResenias
+    ? "Sin reseñas todavía"
+    : `${formatearPuntaje(data.promedio)} de 5 · ${data.cantidad} ${data.cantidad === 1 ? "reseña" : "reseñas"}`;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Reseñas del evento: ${texto}. Ver reseñas`}
+      className="min-h-11 flex-row items-center gap-2 rounded-xl border border-gray-200 p-3 active:opacity-80"
+    >
+      <View className="flex-1 flex-row items-center gap-2">
+        {sinResenias && <Ionicons name="star-outline" size={16} color={COLORES.tintaSuave} />}
+        {!sinResenias && <Estrellas promedio={data.promedio} />}
+        <Text className="text-sm text-tinta">{texto}</Text>
+      </View>
+      <Text className="text-sm font-semibold text-marca">Ver</Text>
+      <Ionicons name="chevron-forward" size={16} color={COLORES.marca} />
+    </Pressable>
+  );
+}
+
+function ResumenDelEvento({ evento, onEditar, onVerResenias }) {
   const realizado = new Date(evento.fecha) <= new Date();
   return (
     <View className="gap-3 rounded-2xl bg-white p-4 shadow-sm">
@@ -95,10 +131,13 @@ function ResumenDelEvento({ evento, onEditar }) {
       </View>
       {/* Un evento que ya pasó no se edita (el backend tampoco lo permite) */}
       {realizado ? (
-        <View className="flex-row items-center gap-2 rounded-xl bg-gray-200 p-3">
-          <Ionicons name="time-outline" size={18} color={COLORES.tinta} />
-          <Text className="flex-1 text-sm text-tinta">Este evento ya se realizó: no se puede editar.</Text>
-        </View>
+        <>
+          <View className="flex-row items-center gap-2 rounded-xl bg-gray-200 p-3">
+            <Ionicons name="time-outline" size={18} color={COLORES.tinta} />
+            <Text className="flex-1 text-sm text-tinta">Este evento ya se realizó: no se puede editar.</Text>
+          </View>
+          <AccesoAResenias evento={evento} onPress={onVerResenias} />
+        </>
       ) : (
         <Boton variante="secundario" onPress={onEditar}>
           Editar evento
@@ -134,12 +173,11 @@ function Disponibilidad({ disponibilidad }) {
                 {agotado ? "Agotado" : `Quedan ${disponibles.toLocaleString("es-AR")}`}
               </Text>
             </View>
-            {/* El alto va en style: con la clase h-2 la barra quedaba en 0 px en la web */}
-            <View className="overflow-hidden rounded-full bg-gray-200" style={{ height: 8 }}>
+            <View className="h-2 overflow-hidden rounded-full bg-gray-200">
               <View
-                className={`rounded-full ${agotado ? "bg-red-600" : "bg-marca"}`}
-                // Un mínimo visible si hay alguna ocupada, aunque sea menos del 1 %
-                style={{ height: 8, width: `${ocupadas > 0 ? Math.max(porcentaje, 2) : 0}%` }}
+                className={`h-full rounded-full ${agotado ? "bg-red-600" : "bg-marca"}`}
+                // El ancho va en style porque depende de un dato. Un mínimo visible si hay alguna ocupada (aunque sea < 1 %)
+                style={{ width: `${ocupadas > 0 ? Math.max(porcentaje, 2) : 0}%` }}
               />
             </View>
             <Text className="text-xs text-tinta-suave">

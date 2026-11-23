@@ -56,7 +56,8 @@ export function HojaCompra({ evento, visible, onCerrar, onComprado }) {
               key={opcion.id}
               onPress={() => elegirTipo(opcion.id)}
               accessibilityRole="radio"
-              accessibilityState={{ checked: elegida }}
+              // aria-checked y no accessibilityState: el "checked" de accessibilityState no llega a la web
+              aria-checked={elegida}
               accessibilityLabel={`${opcion.nombre}, ${formatearPrecio(opcion.precio)}`}
               className={`flex-row items-center gap-3 rounded-2xl border-2 bg-white p-4 active:opacity-80 ${
                 elegida ? "border-marca" : "border-transparent"

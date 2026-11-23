@@ -19,6 +19,9 @@ import {
 } from "../../utils/formato";
 import { COLORES } from "../../styles/colores";
 import { accionesDisponibles } from "./acciones";
+import { HojaResenia } from "./HojaResenia";
+import { TarjetaResenia } from "../../components/TarjetaResenia/TarjetaResenia";
+import { obtenerReseniasDeEvento } from "../../services/reseniasService";
 
 // Detalle de una compra (C5, O2): la comparten el comprador y el organizador del evento.
 // Muestra el estado, el resumen, el chat, el historial y las acciones que le tocan a cada uno.
@@ -50,6 +53,18 @@ export default function DetalleCompra({ route, navigation }) {
 
   const acciones = compra ? accionesDisponibles(compra, usuario.rol) : [];
 
+  // Reseñar (C5): el comprador, cuando ya usó las entradas. No hay un endpoint de "mi reseña": se buscan las
+  // reseñas del evento (son pocas; se piden hasta 50, el máximo) y se mira si alguna es suya.
+  const [reseniando, setReseniando] = useState(false);
+  const puedeReseniar = usuario.rol === "COMPRADOR" && compra?.estado === "UTILIZADA";
+  const reseniasDelEvento = useQuery({
+    queryKey: ["resenias", "evento", compra?.evento.id, "todas"],
+    queryFn: () => obtenerReseniasDeEvento(compra.evento.id, 1, 50),
+    enabled: puedeReseniar,
+  });
+  const miResenia = reseniasDelEvento.data?.resenias.resultados.find((resenia) => resenia.comprador.id === usuario.id);
+  const mostrarReseniar = puedeReseniar && reseniasDelEvento.isSuccess && !miResenia;
+
   const elegir = (accion) => {
     cambio.reset(); // que no quede el error de un intento anterior
     setAccionElegida(accion);
@@ -61,20 +76,22 @@ export default function DetalleCompra({ route, navigation }) {
       error={error}
       onReintentar={refetch}
       pie={
-        acciones.length > 0 && (
+        (acciones.length > 0 || mostrarReseniar) && (
           <View className="gap-2">
             {acciones.map((accion) => (
               <Boton key={accion.accion} variante={accion.variante} onPress={() => elegir(accion)}>
                 {accion.texto}
               </Boton>
             ))}
+            {mostrarReseniar && <Boton onPress={() => setReseniando(true)}>Reseñar el evento</Boton>}
           </View>
         )
       }
     >
       {compra && (
         <>
-          <ContenidoDeLaCompra compra={compra} rol={usuario.rol} navigation={navigation} />
+          <ContenidoDeLaCompra compra={compra} rol={usuario.rol} navigation={navigation} miResenia={miResenia} />
+          {puedeReseniar && <HojaResenia evento={compra.evento} visible={reseniando} onCerrar={() => setReseniando(false)} />}
           <HojaConfirmacion
             visible={accionElegida !== null}
             titulo={accionElegida ? `¿${accionElegida.texto}?` : ""}
@@ -110,7 +127,7 @@ const EXPLICACION = {
   },
 };
 
-function ContenidoDeLaCompra({ compra, rol, navigation }) {
+function ContenidoDeLaCompra({ compra, rol, navigation, miResenia }) {
   const { evento, tipoEntrada, cantidad, precioUnitario, total, estado, comprador, historial } = compra;
   const faltan = formatearDiasParaElEvento(compra.diasParaElEvento);
   const esComprador = rol === "COMPRADOR";
@@ -169,6 +186,16 @@ function ContenidoDeLaCompra({ compra, rol, navigation }) {
           <Text className="text-xl font-bold text-tinta">{formatearPrecio(total)}</Text>
         </View>
       </View>
+
+      {/* Si ya reseñó el evento, su reseña (en lugar del botón "Reseñar") */}
+      {miResenia && (
+        <View className="gap-2">
+          <Text className="text-lg font-semibold text-tinta" accessibilityRole="header">
+            Tu reseña
+          </Text>
+          <TarjetaResenia resenia={miResenia} />
+        </View>
+      )}
 
       {/* Chat con la otra parte: se puede escribir en cualquier estado */}
       <Pressable
