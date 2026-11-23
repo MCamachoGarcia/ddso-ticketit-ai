@@ -1,5 +1,6 @@
 import { EstadoCompra } from "../enums/EstadoCompra.js";
 import { CambioEstadoCompra } from "./CambioEstadoCompra.js";
+import { Mensaje } from "./Mensaje.js";
 import {
   ReglaDeNegocioError,
   TransicionDeEstadoInvalidaError,
@@ -83,6 +84,14 @@ export class Compra {
   // Cuándo llegó la compra a un estado, o null si nunca pasó por él
   fechaDeEstado(estado) {
     return this.cambiosDeEstado.find((cambio) => cambio.estado === estado)?.fechaHora ?? null;
+  }
+
+  // Chat de la compra (C3/O3): se puede escribir "en cualquier momento", en cualquier estado.
+  // Quién puede escribir (comprador u organizador del evento) lo controla la ruta (decisión 15).
+  agregarMensaje(usuario, texto, enviado = new Date()) {
+    const mensaje = new Mensaje({ usuario, mensaje: texto, enviado });
+    this.mensajes.push(mensaje);
+    return mensaje;
   }
 
   // Si tiene entradas reservadas, que se descuentan del cupo de su tipo de entrada

@@ -194,4 +194,12 @@ export async function cargarSeed() {
     }
     await compraRepository.save(compra);
   }
+
+  // Una conversación de ejemplo en la compra 2 (Leo, evento de Ana)
+  const compraConChat = await compraRepository.findById("2");
+  const [leo, ana] = [usuarios[C], compraConChat.evento.organizador];
+  compraConChat.agregarMensaje(leo, "Hola, ¿a qué hora abren las puertas?", dentroDe(-3, 10));
+  compraConChat.agregarMensaje(ana, "¡Hola Leo! Las puertas abren a las 19 hs.", dentroDe(-3, 11));
+  compraConChat.agregarMensaje(leo, "Genial, ¡gracias!", dentroDe(-3, 12));
+  await compraRepository.update(compraConChat);
 }

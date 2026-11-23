@@ -1,6 +1,8 @@
 // "Base de datos" en memoria: vive a nivel de módulo para que todas las instancias compartan los mismos datos
 const compras = [];
 let siguienteId = 1;
+// Los mensajes del chat viven dentro de su compra, pero tienen id propio, único en toda la API
+let siguienteMensajeId = 1;
 
 export class CompraRepository {
   async findAll() {
@@ -28,6 +30,7 @@ export class CompraRepository {
 
   async save(compra) {
     compra.id = String(siguienteId++);
+    this.asignarIdsAMensajesNuevos(compra);
     compras.push(compra);
     return compra;
   }
@@ -35,13 +38,23 @@ export class CompraRepository {
   async update(compra) {
     const posicion = compras.findIndex((guardada) => guardada.id === compra.id);
     if (posicion === -1) return null;
+    this.asignarIdsAMensajesNuevos(compra);
     compras[posicion] = compra;
     return compra;
+  }
+
+  asignarIdsAMensajesNuevos(compra) {
+    compra.mensajes
+      .filter((mensaje) => !mensaje.id)
+      .forEach((mensaje) => {
+        mensaje.id = String(siguienteMensajeId++);
+      });
   }
 
   // Vacía la lista y reinicia los ids. Lo usan el seed y los tests para arrancar desde cero.
   static limpiar() {
     compras.length = 0;
     siguienteId = 1;
+    siguienteMensajeId = 1;
   }
 }
