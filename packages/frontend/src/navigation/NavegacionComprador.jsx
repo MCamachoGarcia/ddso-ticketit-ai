@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { iconoDePestania } from "./iconoDePestania";
-import { TITULOS_COMPARTIDOS, opcionesDePestanias, opcionesDePila } from "./opciones";
+import { TITULOS_COMPARTIDOS, opcionesDePila, useOpcionesDePestanias } from "./opciones";
 import Explorar from "../screens/Explorar/Explorar";
 import MisCompras from "../screens/MisCompras/MisCompras";
 import Favoritos from "../screens/Favoritos/Favoritos";
@@ -17,7 +17,7 @@ const Pila = createNativeStackNavigator();
 // Las pestañas de abajo del comprador
 function PestaniasComprador() {
   return (
-    <Pestanias.Navigator screenOptions={opcionesDePestanias}>
+    <Pestanias.Navigator screenOptions={useOpcionesDePestanias()}>
       <Pestanias.Screen name="Explorar" component={Explorar} options={{ tabBarIcon: iconoDePestania("search") }} />
       <Pestanias.Screen
         name="MisCompras"

@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { iconoDePestania } from "./iconoDePestania";
-import { TITULOS_COMPARTIDOS, opcionesDePestanias, opcionesDePila } from "./opciones";
+import { TITULOS_COMPARTIDOS, opcionesDePila, useOpcionesDePestanias } from "./opciones";
 import MisEventos from "../screens/MisEventos/MisEventos";
 import FormularioEvento from "../screens/FormularioEvento/FormularioEvento";
 import Perfil from "../screens/Perfil/Perfil";
@@ -16,7 +16,7 @@ const Pila = createNativeStackNavigator();
 // Las pestañas de abajo del organizador
 function PestaniasOrganizador() {
   return (
-    <Pestanias.Navigator screenOptions={opcionesDePestanias}>
+    <Pestanias.Navigator screenOptions={useOpcionesDePestanias()}>
       <Pestanias.Screen
         name="MisEventos"
         component={MisEventos}
