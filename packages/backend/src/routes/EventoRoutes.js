@@ -2,12 +2,13 @@ import express from "express";
 import { EventoController } from "../controllers/EventoController.js";
 import { EventoService } from "../services/EventoService.js";
 import { EventoRepository } from "../repositories/EventoRepository.js";
+import { CompraRepository } from "../repositories/CompraRepository.js";
 import { categoriaService } from "./CategoriaRoutes.js";
 import { autenticar, autorizarRol } from "../middlewares/autenticar.js";
 import { exigirOrganizadorDelEvento } from "../middlewares/permisos.js";
 import { RolUsuario } from "../domain/enums/RolUsuario.js";
 
-export const eventoService = new EventoService(new EventoRepository(), categoriaService);
+export const eventoService = new EventoService(new EventoRepository(), categoriaService, new CompraRepository());
 const eventoController = new EventoController(eventoService);
 
 const router = express.Router();

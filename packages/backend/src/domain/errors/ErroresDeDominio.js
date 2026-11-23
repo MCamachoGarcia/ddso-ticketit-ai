@@ -28,9 +28,7 @@ export class TransicionDeEstadoInvalidaError extends ReglaDeNegocioError {
 }
 
 export class SinCupoError extends ReglaDeNegocioError {
-  constructor(tipoEntrada, cantidad) {
-    super(
-      `No hay cupo para ${cantidad} entrada(s) ${tipoEntrada.nombre}: quedan ${tipoEntrada.cupo}`,
-    );
+  constructor(tipoEntrada, cantidad, disponibles) {
+    super(`No hay cupo para ${cantidad} entrada(s) ${tipoEntrada.nombre}: quedan ${disponibles}`);
   }
 }

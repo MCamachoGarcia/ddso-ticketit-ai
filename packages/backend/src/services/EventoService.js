@@ -6,6 +6,7 @@ import {
   ReglaDeNegocioError,
 } from "../domain/errors/ErroresDeDominio.js";
 import { EventoRepository } from "../repositories/EventoRepository.js";
+import { CompraRepository } from "../repositories/CompraRepository.js";
 import { CategoriaService } from "./CategoriaService.js";
 import { paginar } from "../utils/paginar.js";
 
@@ -20,9 +21,16 @@ const VALOR_PARA_ORDENAR = {
 };
 
 export class EventoService {
-  constructor(eventoRepository = new EventoRepository(), categoriaService = new CategoriaService()) {
+  // Usa el repositorio de compras (no su service) para saber cuántas entradas se vendieron al editar el cupo.
+  // Así EventoService y CompraService no dependen uno del otro.
+  constructor(
+    eventoRepository = new EventoRepository(),
+    categoriaService = new CategoriaService(),
+    compraRepository = new CompraRepository(),
+  ) {
     this.eventoRepository = eventoRepository;
     this.categoriaService = categoriaService;
+    this.compraRepository = compraRepository;
   }
 
   toDTO(evento) {
@@ -130,7 +138,7 @@ export class EventoService {
       throw new DatosInvalidosError("La fecha del evento debe ser futura");
     }
 
-    this.validarTiposEntradaEditados(evento, datos.tiposEntrada);
+    await this.validarTiposEntradaEditados(evento, datos.tiposEntrada);
 
     // Recién acá se aplican los cambios: los tipos con id se modifican y los que no tienen id se agregan
     Object.assign(evento, {
@@ -147,8 +155,9 @@ export class EventoService {
     return this.toDTO(await this.eventoRepository.update(evento));
   };
 
-  // Los tipos de entrada se pueden modificar y agregar, pero no quitar (decisión 24)
-  validarTiposEntradaEditados(evento, tiposEditados) {
+  // Los tipos de entrada se pueden modificar y agregar, pero no quitar (decisión 24),
+  // y el cupo de cada uno no puede quedar por debajo de las entradas ya vendidas (decisión 25)
+  async validarTiposEntradaEditados(evento, tiposEditados) {
     const idsEnviados = tiposEditados.filter((tipo) => tipo.id).map((tipo) => tipo.id);
 
     const ajeno = idsEnviados.find((tipoId) => !evento.tipoEntrada(tipoId));
@@ -160,6 +169,15 @@ export class EventoService {
     if (quitados.length > 0) {
       const nombres = quitados.map((tipo) => `${tipo.nombre} (id ${tipo.id})`).join(", ");
       throw new ReglaDeNegocioError(`No se pueden quitar tipos de entrada de un evento. Faltan: ${nombres}`);
+    }
+
+    for (const tipo of tiposEditados.filter((editado) => editado.id)) {
+      const ocupadas = await this.compraRepository.entradasOcupadas(tipo.id);
+      if (tipo.cupo < ocupadas) {
+        throw new ReglaDeNegocioError(
+          `El cupo de ${tipo.nombre} no puede ser menor a las ${ocupadas} entradas ya vendidas`,
+        );
+      }
     }
   }
 }

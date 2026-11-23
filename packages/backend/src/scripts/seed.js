@@ -1,4 +1,7 @@
 import { Categoria } from "../domain/entities/Categoria.js";
+import { Compra } from "../domain/entities/Compra.js";
+import { EstadoCompra } from "../domain/enums/EstadoCompra.js";
+import { CompraRepository } from "../repositories/CompraRepository.js";
 import { Evento } from "../domain/entities/Evento.js";
 import { TipoEntrada } from "../domain/entities/TipoEntrada.js";
 import { Usuario } from "../domain/entities/Usuario.js";
@@ -106,15 +109,49 @@ const EVENTOS = [
   },
 ];
 
+// Una compra por cada estado, para probar todas las pantallas y transiciones. evento, tipo y comprador son
+// índices; "pasos" son los cambios de estado después de PENDIENTE_DE_PAGO, con quién y cuándo (días desde hoy).
+const C = 2; // Leo, comprador
+const S = 3; // Sofía, compradora
+const ORGANIZADOR_DEL_EVENTO = "organizador";
+const COMPRAS = [
+  // Pendiente: el organizador (Ana) la puede confirmar
+  { evento: 0, tipo: 2, comprador: S, cantidad: 1, creadaHace: 1, pasos: [] },
+  // Confirmada: muestra los días que faltan; el comprador la puede cancelar
+  { evento: 0, tipo: 0, comprador: C, cantidad: 2, creadaHace: 5, pasos: [[EstadoCompra.CONFIRMADA, ORGANIZADOR_DEL_EVENTO, -4]] },
+  // Cancelada sin haber pagado: no se puede reembolsar
+  { evento: 1, tipo: 0, comprador: C, cantidad: 1, creadaHace: 3, pasos: [[EstadoCompra.CANCELADA, C, -2]] },
+  // Pagada y cancelada: el organizador (Ana) la puede reembolsar
+  {
+    evento: 3,
+    tipo: 1,
+    comprador: S,
+    cantidad: 1,
+    creadaHace: 6,
+    pasos: [[EstadoCompra.CONFIRMADA, ORGANIZADOR_DEL_EVENTO, -5], [EstadoCompra.CANCELADA, S, -1]],
+  },
+  // Utilizada, de un evento que ya pasó: lista para reseñar
+  {
+    evento: 6,
+    tipo: 0,
+    comprador: C,
+    cantidad: 2,
+    creadaHace: 45,
+    pasos: [[EstadoCompra.CONFIRMADA, ORGANIZADOR_DEL_EVENTO, -44], [EstadoCompra.UTILIZADA, ORGANIZADOR_DEL_EVENTO, "evento"]],
+  },
+];
+
 // Vacía las listas en memoria y carga los datos de ejemplo. Se llama al iniciar el servidor.
 export async function cargarSeed() {
   CategoriaRepository.limpiar();
   UsuarioRepository.limpiar();
   EventoRepository.limpiar();
+  CompraRepository.limpiar();
 
   const categoriaRepository = new CategoriaRepository();
   const usuarioRepository = new UsuarioRepository();
   const eventoRepository = new EventoRepository();
+  const compraRepository = new CompraRepository();
 
   const categorias = [];
   for (const datos of CATEGORIAS) {
@@ -126,14 +163,35 @@ export async function cargarSeed() {
     usuarios.push(await usuarioRepository.save(new Usuario({ ...datos, passwordHash: null })));
   }
 
+  const eventos = [];
   for (const { categoria, organizador, tiposEntrada, ...datos } of EVENTOS) {
-    await eventoRepository.save(
-      new Evento({
-        ...datos,
-        categoria: categorias[categoria],
-        organizador: usuarios[organizador],
-        tiposEntrada: tiposEntrada.map((tipo) => new TipoEntrada(tipo)),
-      }),
+    eventos.push(
+      await eventoRepository.save(
+        new Evento({
+          ...datos,
+          categoria: categorias[categoria],
+          organizador: usuarios[organizador],
+          tiposEntrada: tiposEntrada.map((tipo) => new TipoEntrada(tipo)),
+        }),
+      ),
     );
+  }
+
+  // Las transiciones pasan por actualizarEstado, así el seed respeta las mismas reglas que la API
+  for (const { evento: e, tipo, comprador: c, cantidad, creadaHace, pasos } of COMPRAS) {
+    const evento = eventos[e];
+    const comprador = usuarios[c];
+    const compra = new Compra({
+      comprador,
+      evento,
+      tipoEntrada: evento.tiposEntrada[tipo],
+      cantidad,
+      creadaEl: dentroDe(-creadaHace, 12),
+    });
+    for (const [estado, quien, dias] of pasos) {
+      const usuario = quien === ORGANIZADOR_DEL_EVENTO ? evento.organizador : usuarios[quien];
+      compra.actualizarEstado(estado, usuario, dias === "evento" ? evento.fecha : dentroDe(dias, 12));
+    }
+    await compraRepository.save(compra);
   }
 }
