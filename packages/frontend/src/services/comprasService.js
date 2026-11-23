@@ -10,6 +10,10 @@ export const comprar = ({ eventoId, tipoEntradaId, cantidad }) =>
 export const obtenerMisCompras = ({ estado } = {}, page = 1, limit = 10) =>
   api.get("/compras", { params: { page, limit, ...(estado && { estado }) } }).then((r) => r.data);
 
+// Compras de un evento (O1), solo para su organizador: { evento, disponibilidad por tipo, compras paginadas }
+export const obtenerComprasDelEvento = (eventoId, { estado } = {}, page = 1, limit = 10) =>
+  api.get(`/eventos/${eventoId}/compras`, { params: { page, limit, ...(estado && { estado }) } }).then((r) => r.data);
+
 // Una compra con su historial. La pueden ver su comprador y el organizador del evento.
 export const obtenerCompra = (id) => api.get(`/compras/${id}`).then((r) => r.data);
 

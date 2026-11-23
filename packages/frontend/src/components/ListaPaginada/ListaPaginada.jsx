@@ -12,11 +12,19 @@ import { COLORES } from "../../styles/colores";
  *
  * Usa FlatList y no ScrollView + map: FlatList solo dibuja lo que se ve, así una lista larga no traba el celular.
  */
-export function ListaPaginada({ consulta, renderItem, vacio }) {
+// encabezado (opcional): algo que va arriba de la lista y scrollea con ella (por ejemplo, un resumen y filtros).
+// Se muestra también mientras la lista carga o si falla, para que la pantalla no quede vacía.
+export function ListaPaginada({ consulta, renderItem, vacio, encabezado = null }) {
   const { data, isLoading, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } = consulta;
 
-  if (isLoading) return <EstadoDeCarga />;
-  if (error && !data) return <MensajeDeError error={error} onReintentar={refetch} />;
+  if (isLoading || (error && !data)) {
+    return (
+      <View className="flex-1">
+        {encabezado}
+        {isLoading ? <EstadoDeCarga /> : <MensajeDeError error={error} onReintentar={refetch} />}
+      </View>
+    );
+  }
 
   const items = data.pages.flatMap((pagina) => pagina.resultados);
 
@@ -31,6 +39,7 @@ export function ListaPaginada({ consulta, renderItem, vacio }) {
       onEndReachedThreshold={0.5}
       refreshing={isRefetching && !isFetchingNextPage}
       onRefresh={refetch}
+      ListHeaderComponent={encabezado}
       ListEmptyComponent={<Vacio {...vacio} />}
       ListFooterComponent={
         isFetchingNextPage ? (
