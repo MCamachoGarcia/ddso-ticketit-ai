@@ -43,6 +43,7 @@ const nombres = (pagina) => pagina.resultados.map((evento) => evento.nombre);
 describe("EventoService", () => {
   let repository;
   let categoriaService;
+  let compraRepository;
   let service;
 
   beforeEach(() => {
@@ -54,7 +55,8 @@ describe("EventoService", () => {
       update: jest.fn((evento) => Promise.resolve(evento)),
     };
     categoriaService = { buscarCategoria: jest.fn() };
-    service = new EventoService(repository, categoriaService);
+    compraRepository = { entradasOcupadas: jest.fn().mockResolvedValue(0) };
+    service = new EventoService(repository, categoriaService, compraRepository);
   });
 
   describe("toDTO", () => {
@@ -271,6 +273,20 @@ describe("EventoService", () => {
       expect(evento.tiposEntrada).toHaveLength(3);
       expect(evento.tiposEntrada[2]).toBeInstanceOf(TipoEntrada);
       expect(evento.tiposEntrada[2]).toMatchObject({ id: null, nombre: "Platea" });
+    });
+
+    it("no deja bajar el cupo de un tipo por debajo de las entradas vendidas", async () => {
+      compraRepository.entradasOcupadas.mockImplementation((tipoId) => Promise.resolve(tipoId === "c1" ? 151 : 0));
+
+      await expect(service.actualizar("5", datosEditados(), AHORA)).rejects.toThrow(
+        new ReglaDeNegocioError("El cupo de Campo no puede ser menor a las 151 entradas ya vendidas"),
+      );
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it("permite dejar el cupo justo en las entradas vendidas", async () => {
+      compraRepository.entradasOcupadas.mockImplementation((tipoId) => Promise.resolve(tipoId === "c1" ? 150 : 0));
+      await expect(service.actualizar("5", datosEditados(), AHORA)).resolves.toMatchObject({ id: "5" });
     });
 
     it("no deja quitar un tipo de entrada existente", async () => {

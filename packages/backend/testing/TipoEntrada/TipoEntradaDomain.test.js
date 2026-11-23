@@ -28,5 +28,27 @@ describe("TipoEntrada", () => {
       const agotada = new TipoEntrada({ nombre: "VIP", descripcion: "Frente", precio: 1, cupo: 0 });
       expect(agotada.hayCupoPara(1)).toBe(false);
     });
+
+    it.each([
+      [2, 3, true],
+      [3, 3, false],
+      [1, 5, false],
+    ])("con %i pedidas y %i ya ocupadas (cupo 5) devuelve %s", (cantidad, ocupadas, esperado) => {
+      expect(general.hayCupoPara(cantidad, ocupadas)).toBe(esperado);
+    });
+  });
+
+  describe("disponibles", () => {
+    it("resta las ocupadas al cupo", () => {
+      expect(general.disponibles(2)).toBe(3);
+    });
+
+    it("sin ocupadas son todo el cupo", () => {
+      expect(general.disponibles()).toBe(5);
+    });
+
+    it("nunca es negativo", () => {
+      expect(general.disponibles(8)).toBe(0);
+    });
   });
 });

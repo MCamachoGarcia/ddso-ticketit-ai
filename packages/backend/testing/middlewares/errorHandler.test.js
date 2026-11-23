@@ -36,7 +36,7 @@ describe("errorHandler", () => {
     ["NoEncontradoError", new NoEncontradoError("No existe el evento"), 404],
     ["ReglaDeNegocioError", new ReglaDeNegocioError("No se puede"), 409],
     ["TransicionDeEstadoInvalidaError (hereda de ReglaDeNegocio)", new TransicionDeEstadoInvalidaError("UTILIZADA", "CANCELADA"), 409],
-    ["SinCupoError (hereda de ReglaDeNegocio)", new SinCupoError({ nombre: "VIP", cupo: 1 }, 3), 409],
+    ["SinCupoError (hereda de ReglaDeNegocio)", new SinCupoError({ nombre: "VIP" }, 3, 1), 409],
   ])("traduce %s a %i con su mensaje y timestamp", (_nombre, error, codigo) => {
     errorHandler(error, {}, res, () => {});
 

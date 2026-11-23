@@ -158,7 +158,7 @@ describe("Compra", () => {
       ["después del evento", DESPUES_DEL_EVENTO],
     ])("no permite pagar %s", (_caso, fecha) => {
       expect(() => compra.actualizarEstado(EstadoCompra.CONFIRMADA, comprador, fecha)).toThrow(
-        new ReglaDeNegocioError("No se puede pagar una compra de un evento que ya se realizó"),
+        new ReglaDeNegocioError("No se puede confirmar el pago de una compra de un evento que ya se realizó"),
       );
       expect(compra.estado).toBe(EstadoCompra.PENDIENTE_DE_PAGO);
       expect(compra.cambiosDeEstado).toHaveLength(1);
@@ -251,6 +251,48 @@ describe("Compra", () => {
 
       expect(compra.fechaDeEstado(EstadoCompra.CONFIRMADA)).toBe(pago);
       expect(compra.fechaDeEstado(EstadoCompra.UTILIZADA)).toBeNull();
+    });
+
+    it("creadaEl fija la fecha del primer registro del historial", () => {
+      const creadaEl = new Date("2026-11-01T10:00:00");
+      const otra = new Compra({ comprador, evento, tipoEntrada: vip, cantidad: 1, creadaEl });
+      expect(otra.fechaDeEstado(EstadoCompra.PENDIENTE_DE_PAGO)).toBe(creadaEl);
+    });
+  });
+
+  describe("ocupaCupo", () => {
+    it.each([
+      ["PENDIENTE_DE_PAGO", [], true],
+      ["CONFIRMADA", [EstadoCompra.CONFIRMADA], true],
+      ["UTILIZADA", [EstadoCompra.CONFIRMADA, EstadoCompra.UTILIZADA], true],
+      ["CANCELADA", [EstadoCompra.CANCELADA], false],
+      ["REEMBOLSADA", [EstadoCompra.CONFIRMADA, EstadoCompra.CANCELADA, EstadoCompra.REEMBOLSADA], false],
+    ])("en %s devuelve %s", (_estado, estados, esperado) => {
+      llevarA(...estados);
+      expect(compra.ocupaCupo()).toBe(esperado);
+    });
+  });
+
+  describe("diasParaElEvento", () => {
+    // El evento es el 2026-12-20 a las 21 hs
+    it.each([
+      ["27 días antes", "2026-11-23T12:00:00", 27],
+      ["el día anterior a la noche (cuenta días de calendario)", "2026-12-19T23:30:00", 1],
+      ["el mismo día, antes de que empiece", "2026-12-20T10:00:00", 0],
+    ])("confirmada, %s → %i", (_caso, ahora, esperado) => {
+      llevarA(EstadoCompra.CONFIRMADA);
+      expect(compra.diasParaElEvento(new Date(ahora))).toBe(esperado);
+    });
+
+    it("es null si la compra no está confirmada", () => {
+      expect(compra.diasParaElEvento(HOY)).toBeNull();
+      llevarA(EstadoCompra.CANCELADA);
+      expect(compra.diasParaElEvento(HOY)).toBeNull();
+    });
+
+    it("es null si el evento ya empezó (el comprador no asistió)", () => {
+      llevarA(EstadoCompra.CONFIRMADA);
+      expect(compra.diasParaElEvento(DESPUES_DEL_EVENTO)).toBeNull();
     });
   });
 });
