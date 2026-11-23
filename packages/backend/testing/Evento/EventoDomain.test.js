@@ -12,6 +12,36 @@ describe("Evento", () => {
     expect(evento.multimedia).toEqual([]);
   });
 
+  describe("tipoEntrada", () => {
+    const vip = Object.assign(crearTipo("VIP", 50000), { id: "7" });
+    const evento = new Evento({ nombre: "Recital", descripcion: "x", fecha: new Date(), tiposEntrada: [vip] });
+
+    it("devuelve el tipo de entrada con ese id, aceptando número o texto", () => {
+      expect(evento.tipoEntrada("7")).toBe(vip);
+      expect(evento.tipoEntrada(7)).toBe(vip);
+    });
+
+    it("devuelve null si el tipo no es de este evento", () => {
+      expect(evento.tipoEntrada("99")).toBeNull();
+    });
+  });
+
+  describe("precioMinimo", () => {
+    it("devuelve el precio más barato de sus tipos de entrada", () => {
+      const evento = new Evento({
+        nombre: "Recital",
+        descripcion: "x",
+        fecha: new Date(),
+        tiposEntrada: [crearTipo("VIP", 50000), crearTipo("General", 10000), crearTipo("Platea", 25000)],
+      });
+      expect(evento.precioMinimo()).toBe(10000);
+    });
+
+    it("devuelve null si el evento no tiene tipos de entrada", () => {
+      expect(new Evento({ nombre: "Charla", descripcion: "x", fecha: new Date() }).precioMinimo()).toBeNull();
+    });
+  });
+
   describe("yaSeRealizo", () => {
     const evento = new Evento({ nombre: "Recital", descripcion: "x", fecha: new Date("2026-12-20T21:00:00") });
 

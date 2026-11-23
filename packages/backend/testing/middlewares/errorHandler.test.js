@@ -8,6 +8,7 @@ import {
   SinCupoError,
   TransicionDeEstadoInvalidaError,
 } from "../../src/domain/errors/ErroresDeDominio.js";
+import { NoAutenticadoError, SinPermisoError } from "../../src/errors/ErroresDeAutorizacion.js";
 
 const crearRes = () => {
   const res = {};
@@ -30,6 +31,8 @@ describe("errorHandler", () => {
 
   it.each([
     ["DatosInvalidosError", new DatosInvalidosError("Datos inválidos"), 400],
+    ["NoAutenticadoError", new NoAutenticadoError(), 401],
+    ["SinPermisoError", new SinPermisoError(), 403],
     ["NoEncontradoError", new NoEncontradoError("No existe el evento"), 404],
     ["ReglaDeNegocioError", new ReglaDeNegocioError("No se puede"), 409],
     ["TransicionDeEstadoInvalidaError (hereda de ReglaDeNegocio)", new TransicionDeEstadoInvalidaError("UTILIZADA", "CANCELADA"), 409],
