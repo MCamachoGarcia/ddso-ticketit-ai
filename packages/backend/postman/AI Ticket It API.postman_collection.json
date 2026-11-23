@@ -1416,6 +1416,200 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Chat",
+      "description": "Chat de una compra (C3/O3), entre el comprador y el organizador del evento, en cualquier estado de la compra.\n\n**Enviar** es por REST. **Recibir en tiempo real** es por WebSocket. En el seed, la compra 2 (de Leo, en un evento de Ana) ya tiene una conversación.\n\n**Probar el WebSocket en Postman:** New → WebSocket, URL `ws://localhost:8000/ws`, Connect, y mandar estos mensajes en orden:\n1. `{ \"tipo\": \"autenticar\", \"usuarioId\": \"3\" }` → responde `autenticado`\n2. `{ \"tipo\": \"suscribir\", \"compraId\": \"2\" }` → responde `suscripto`\n3. Desde esta colección, correr *Enviar mensaje (organizador)*: en el WebSocket llega `{ \"tipo\": \"mensaje\", \"compraId\": \"2\", \"mensaje\": { ... } }`.\n\nPara dejar de recibir: `{ \"tipo\": \"desuscribir\", \"compraId\": \"2\" }`. Si algo falla, llega `{ \"tipo\": \"error\", \"error\": \"...\" }` y la conexión sigue abierta.",
+      "item": [
+        {
+          "name": "Ver el chat (comprador)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/compras/2/mensajes?limit=50&antes=2026-12-01T00:00:00Z&desde=2026-11-01T00:00:00Z",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "2",
+                "mensajes"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Cuántos mensajes (máximo 50). Por defecto, los últimos 50."
+                },
+                {
+                  "key": "antes",
+                  "value": "2026-12-01T00:00:00Z",
+                  "description": "Los anteriores a esta fecha (para cargar más al subir)",
+                  "disabled": true
+                },
+                {
+                  "key": "desde",
+                  "value": "2026-11-01T00:00:00Z",
+                  "description": "Los posteriores a esta fecha (los nuevos)",
+                  "disabled": true
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Los últimos mensajes en orden cronológico. `hayAnteriores` indica si se pueden cargar más con `antes`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae los mensajes en orden cronológico', () => {",
+                  "  const fechas = pm.response.json().mensajes.map((m) => m.enviado);",
+                  "  pm.expect(fechas).to.eql([...fechas].sort());",
+                  "});",
+                  "pm.test('Indica si hay anteriores', () => pm.expect(pm.response.json().hayAnteriores).to.be.a('boolean'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar mensaje (organizador)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/2/mensajes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "2",
+                "mensajes"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Recordá traer el DNI para ingresar.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El autor es el usuario identificado. Se avisa por WebSocket a quienes tienen el chat abierto. Máximo 1000 caracteres."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('El autor es el organizador', () => pm.expect(pm.response.json().usuario.rol).to.eql('ORGANIZADOR'));",
+                  "pm.test('Tiene id para no duplicarlo en la app', () => pm.expect(pm.response.json().id).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar mensaje vacío (400)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/2/mensajes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "2",
+                "mensajes"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().detalles).to.include('mensaje: El mensaje no puede estar vacío'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver el chat de una compra ajena (403)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/compras/1/mensajes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "1",
+                "mensajes"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "La compra 1 es de Sofía."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

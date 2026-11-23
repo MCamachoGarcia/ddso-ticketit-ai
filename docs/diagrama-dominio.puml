@@ -37,7 +37,8 @@ class TipoEntrada {
   - descripcion: String
   - precio: Double
   - cupo: Int
-  + hayCupoPara(Int): Boolean
+  + hayCupoPara(Int, Int): Boolean
+  + disponibles(Int): Int
 }
 
 class Evento {
@@ -49,6 +50,9 @@ class Evento {
   - multimedia: String[]
   - organizador: Usuario
   + tuPrecioEstaEntre(Int, Int): Boolean
+  + precioMinimo(): Double
+  + yaSeRealizo(DateTime): Boolean
+  + tipoEntrada(String): TipoEntrada
 }
 
 class Compra {
@@ -63,6 +67,9 @@ class Compra {
   + actualizarEstado(EstadoCompra, Usuario, DateTime): void
   + fuePagada(): Boolean
   + fechaDeEstado(EstadoCompra): DateTime
+  + ocupaCupo(): Boolean
+  + diasParaElEvento(DateTime): Int
+  + agregarMensaje(Usuario, String, DateTime): Mensaje
 }
 
 class CambioEstadoCompra {
@@ -94,7 +101,7 @@ Evento --> "*" TipoEntrada
 Compra --> Usuario
 Compra --> Evento
 Compra --> TipoEntrada
-Compra --> "*" Mensaje
+Compra *--> "*" Mensaje : mensajes
 Compra --> EstadoCompra
 Compra *--> "*" CambioEstadoCompra : cambiosDeEstado
 
