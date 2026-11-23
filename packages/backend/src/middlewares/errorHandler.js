@@ -3,11 +3,14 @@ import {
   NoEncontradoError,
   ReglaDeNegocioError,
 } from "../domain/errors/ErroresDeDominio.js";
+import { NoAutenticadoError, SinPermisoError } from "../errors/ErroresDeAutorizacion.js";
 
-// Único lugar que traduce los errores de dominio a códigos HTTP.
+// Único lugar que traduce los errores a códigos HTTP.
 // El orden importa: se usa la primera clase que coincida (las subclases heredan el código de su padre).
 const CODIGOS_POR_ERROR = [
   [DatosInvalidosError, 400],
+  [NoAutenticadoError, 401],
+  [SinPermisoError, 403],
   [NoEncontradoError, 404],
   [ReglaDeNegocioError, 409],
 ];
