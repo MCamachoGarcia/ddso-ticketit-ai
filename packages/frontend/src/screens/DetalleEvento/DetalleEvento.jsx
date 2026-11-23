@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { Pantalla } from "../../components/Pantalla/Pantalla";
 import { Estrellas } from "../../components/Estrellas/Estrellas";
 import { BotonFavorito } from "../../components/BotonFavorito/BotonFavorito";
+import { Boton } from "../../components/Boton/Boton";
+import { HojaCompra } from "./HojaCompra";
 import { obtenerEvento } from "../../services/eventosService";
 import { formatearFechaLarga, formatearHora, formatearPrecio, formatearPuntaje } from "../../utils/formato";
 import { COLORES } from "../../styles/colores";
@@ -13,23 +16,47 @@ import { COLORES } from "../../styles/colores";
 export default function DetalleEvento({ route, navigation }) {
   const { eventoId } = route.params;
 
+  const [comprando, setComprando] = useState(false);
+
   const { data: evento, isLoading, error, refetch } = useQuery({
     queryKey: ["evento", eventoId],
     queryFn: () => obtenerEvento(eventoId),
   });
 
+  // Se puede llegar a un evento que ya pasó (por ejemplo, desde una compra): se avisa y no se puede comprar
+  const yaSeRealizo = evento ? new Date(evento.fecha) <= new Date() : false;
+  const precioDesde = evento ? formatearPrecio(evento.precioDesde) : "";
+
+  // Después de comprar: se cierra la hoja y se abre la compra recién creada
+  const alComprar = (compra) => {
+    setComprando(false);
+    navigation.navigate("DetalleCompra", { compraId: compra.id });
+  };
+
   return (
-    <Pantalla cargando={isLoading} error={error} onReintentar={refetch}>
-      {evento && <ContenidoDelEvento evento={evento} navigation={navigation} />}
+    <Pantalla
+      cargando={isLoading}
+      error={error}
+      onReintentar={refetch}
+      pie={
+        !yaSeRealizo && (
+          <Boton onPress={() => setComprando(true)}>{`Comprar entradas · desde ${precioDesde}`}</Boton>
+        )
+      }
+    >
+      {evento && (
+        <>
+          <ContenidoDelEvento evento={evento} yaSeRealizo={yaSeRealizo} navigation={navigation} />
+          <HojaCompra evento={evento} visible={comprando} onCerrar={() => setComprando(false)} onComprado={alComprar} />
+        </>
+      )}
     </Pantalla>
   );
 }
 
-function ContenidoDelEvento({ evento, navigation }) {
+function ContenidoDelEvento({ evento, yaSeRealizo, navigation }) {
   const { nombre, descripcion, categoria, fecha, multimedia, organizador, tiposEntrada } = evento;
   const puntaje = organizador.puntaje ?? { promedio: null, cantidad: 0 };
-  // Se puede llegar a un evento que ya pasó (por ejemplo, desde una compra): se avisa
-  const yaSeRealizo = new Date(fecha) <= new Date();
 
   const verResenias = () =>
     navigation.navigate("ReseniasOrganizador", {

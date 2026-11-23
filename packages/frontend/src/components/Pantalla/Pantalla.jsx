@@ -1,5 +1,5 @@
 import { ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { EstadoDeCarga, MensajeDeError } from "../Estados/Estados";
 
 /**
@@ -11,8 +11,13 @@ import { EstadoDeCarga, MensajeDeError } from "../Estados/Estados";
  *
  * sinEncabezado: para pantallas sin la barra de título de la navegación (por ejemplo, Ingresar).
  * Deja libre la zona de la cámara y la barra de estado del celular (el "área segura").
+ *
+ * pie: algo fijo abajo de todo que no scrollea (por ejemplo, el botón "Comprar entradas").
+ * Respeta el área segura de abajo (la barra de gestos del iPhone).
  */
-export function Pantalla({ children, cargando = false, error = null, onReintentar, scroll = true, sinEncabezado = false }) {
+export function Pantalla({ children, cargando = false, error = null, onReintentar, scroll = true, sinEncabezado = false, pie }) {
+  const { bottom } = useSafeAreaInsets();
+
   let contenido = children;
   if (cargando) contenido = <EstadoDeCarga />;
   else if (error) contenido = <MensajeDeError error={error} onReintentar={onReintentar} />;
@@ -25,11 +30,22 @@ export function Pantalla({ children, cargando = false, error = null, onReintenta
     <View className="flex-1 p-4">{contenido}</View>
   );
 
+  // El pie solo se muestra cuando la pantalla tiene sus datos (no mientras carga ni con error)
+  const conPie = pie && !cargando && !error && (
+    <View className="border-t border-gray-200 bg-white px-4 pt-3" style={{ paddingBottom: 12 + bottom }}>
+      {pie}
+    </View>
+  );
+
   return sinEncabezado ? (
     <SafeAreaView className="flex-1 bg-fondo" edges={["top"]}>
       {cuerpo}
+      {conPie}
     </SafeAreaView>
   ) : (
-    <View className="flex-1 bg-fondo">{cuerpo}</View>
+    <View className="flex-1 bg-fondo">
+      {cuerpo}
+      {conPie}
+    </View>
   );
 }
