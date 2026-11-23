@@ -7,8 +7,10 @@ node_modules/
 # Enunciado del TP (no se versiona)
 AI_Ticket_It_Enunciado.docx
 
-# Registro de decisiones (uso interno, no se versiona)
+# Registro de decisiones y notas de requerimientos (uso interno, no se versionan)
 docs/decisiones.md
+docs/requerimientos.md
+docs/autenticacion-autorizacion.md
 
 # Configuración local de asistentes de IA
 .claude/

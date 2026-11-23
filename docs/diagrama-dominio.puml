@@ -1,0 +1,109 @@
+@startuml diagrama-dominio
+' Diagrama tentativo del dominio sugerido por el enunciado de AI Ticket It
+skinparam classAttributeIconSize 0
+hide empty members
+
+' ---------- Enums ----------
+enum EstadoCompra {
+  PENDIENTE_DE_PAGO
+  CONFIRMADA
+  UTILIZADA
+  CANCELADA
+  REEMBOLSADA
+}
+
+enum RolUsuario {
+  COMPRADOR
+  ORGANIZADOR
+}
+
+' ---------- Clases ----------
+class Usuario {
+  - nombre: String
+  - apellido: String
+  - email: String
+  - passwordHash: String
+  - rol: RolUsuario
+  - favoritos: Evento[]
+}
+
+class Categoria {
+  - nombre: String
+  - descripcion: String
+}
+
+class TipoEntrada {
+  - nombre: String
+  - descripcion: String
+  - precio: Double
+  - cupo: Int
+  + hayCupoPara(Int): Boolean
+}
+
+class Evento {
+  - nombre: String
+  - descripcion: String
+  - categoria: Categoria
+  - fecha: DateTime
+  - tiposEntrada: TipoEntrada[]
+  - multimedia: String[]
+  - organizador: Usuario
+  + tuPrecioEstaEntre(Int, Int): Boolean
+}
+
+class Compra {
+  - comprador: Usuario
+  - evento: Evento
+  - tipoEntrada: TipoEntrada
+  - cantidad: Int
+  - total: Double
+  - estado: EstadoCompra
+  - mensajes: Mensaje[]
+  - cambiosDeEstado: CambioEstadoCompra[]
+  + actualizarEstado(EstadoCompra, Usuario, DateTime): void
+  + fuePagada(): Boolean
+  + fechaDeEstado(EstadoCompra): DateTime
+}
+
+class CambioEstadoCompra {
+  - estado: EstadoCompra
+  - quien: Usuario
+  - fechaHora: DateTime
+}
+
+class Mensaje {
+  - usuario: Usuario
+  - mensaje: String
+  - enviado: DateTime
+}
+
+class Resenia {
+  - comprador: Usuario
+  - evento: Evento
+  - detalle: String
+  - puntuacion: Double
+}
+
+' ---------- Relaciones ----------
+Usuario --> RolUsuario
+Usuario --> "*" Evento : favoritos
+Evento --> Usuario : organizador
+Evento --> Categoria
+Evento --> "*" TipoEntrada
+
+Compra --> Usuario
+Compra --> Evento
+Compra --> TipoEntrada
+Compra --> "*" Mensaje
+Compra --> EstadoCompra
+Compra *--> "*" CambioEstadoCompra : cambiosDeEstado
+
+CambioEstadoCompra --> Usuario : quien
+CambioEstadoCompra --> EstadoCompra
+
+Mensaje --> Usuario
+
+Resenia --> Usuario
+Resenia --> Evento
+
+@enduml
