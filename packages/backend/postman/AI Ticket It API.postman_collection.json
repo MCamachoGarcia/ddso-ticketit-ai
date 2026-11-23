@@ -1,7 +1,8 @@
 {
   "info": {
+    "_postman_id": "246c96aa-1ac0-42b8-9642-721f5cde2f4e",
     "name": "AI Ticket It API",
-    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run dev:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
+    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run dev:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\n**Identidad (provisoria hasta el login)**: las acciones que requieren un usuario mandan el header `x-usuario-id`. Las variables `organizadorId` (1) y `compradorId` (3) apuntan a usuarios del seed.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -9,6 +10,24 @@
       "key": "baseUrl",
       "value": "http://localhost:8000",
       "type": "string"
+    },
+    {
+      "key": "organizadorId",
+      "value": "1",
+      "type": "string",
+      "description": "Ana Paz (ORGANIZADOR) en el seed"
+    },
+    {
+      "key": "compradorId",
+      "value": "3",
+      "type": "string",
+      "description": "Leo Ruiz (COMPRADOR) en el seed"
+    },
+    {
+      "key": "fechaFutura",
+      "value": "",
+      "type": "string",
+      "description": "La completa el pre-request de Crear evento"
     }
   ],
   "item": [
@@ -116,9 +135,20 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/categorias/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["categorias", ":id"],
-              "variable": [{ "key": "id", "value": "1", "description": "Id de la categoría" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categorias",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id de la categoría"
+                }
+              ]
             },
             "description": "Devuelve una categoría por su id."
           },
@@ -145,9 +175,19 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/categorias/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["categorias", ":id"],
-              "variable": [{ "key": "id", "value": "99" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "categorias",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "99"
+                }
+              ]
             },
             "description": "Si la categoría no existe responde 404."
           },
@@ -159,6 +199,663 @@
                 "exec": [
                   "pm.test('Responde 404', () => pm.response.to.have.status(404));",
                   "pm.test('Explica qué no se encontró', () => pm.expect(pm.response.json().error).to.eql('No existe una categoría con id 99'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Eventos",
+      "description": "Búsqueda pública de eventos (C2), detalle, creación (O2) y edición por su organizador.",
+      "item": [
+        {
+          "name": "Buscar eventos",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/eventos",
+            "description": "Devuelve solo los eventos **próximos**, ordenados por fecha y paginados. Cada evento trae `precioDesde`, el precio de su entrada más barata."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Viene paginado', () => pm.expect(pm.response.json()).to.have.all.keys('resultados', 'page', 'limit', 'total', 'totalPages'));",
+                  "pm.test('Solo eventos próximos', () => {",
+                  "  const ahora = Date.now();",
+                  "  pm.response.json().resultados.forEach((e) => pm.expect(new Date(e.fecha).getTime()).to.be.above(ahora));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar eventos con filtros y orden",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos?texto=musica&orden=precio&direccion=desc&page=1&limit=5&categoriaId=1&precioMin=10000&precioMax=60000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos"
+              ],
+              "query": [
+                {
+                  "key": "texto",
+                  "value": "musica",
+                  "description": "Busca en nombre, descripción y categoría (sin importar tildes)"
+                },
+                {
+                  "key": "orden",
+                  "value": "precio",
+                  "description": "fecha (por defecto) o precio (el más barato de cada evento)"
+                },
+                {
+                  "key": "direccion",
+                  "value": "desc",
+                  "description": "asc (por defecto) o desc"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página"
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Resultados por página (máximo 50)"
+                },
+                {
+                  "key": "categoriaId",
+                  "value": "1",
+                  "description": "Filtra por categoría",
+                  "disabled": true
+                },
+                {
+                  "key": "precioMin",
+                  "value": "10000",
+                  "description": "Algún tipo de entrada cuesta al menos esto",
+                  "disabled": true
+                },
+                {
+                  "key": "precioMax",
+                  "value": "60000",
+                  "description": "Algún tipo de entrada cuesta como mucho esto",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Todos los filtros son opcionales y se combinan. Los que están desactivados se pueden activar en la pestaña Params."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Respeta el limit', () => pm.expect(pm.response.json().limit).to.eql(5));",
+                  "pm.test('Ordena por precio descendente', () => {",
+                  "  const precios = pm.response.json().resultados.map((e) => e.precioDesde);",
+                  "  pm.expect(precios).to.eql([...precios].sort((a, b) => b - a));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar eventos con parámetros inválidos (400)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos?orden=puntaje&precioMin=barato",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos"
+              ],
+              "query": [
+                {
+                  "key": "orden",
+                  "value": "puntaje"
+                },
+                {
+                  "key": "precioMin",
+                  "value": "barato"
+                }
+              ]
+            },
+            "description": "Ordenar por puntaje todavía no está disponible (llega con las reseñas). Un precio no numérico también es inválido."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalla cada parámetro inválido', () => {",
+                  "  const detalles = pm.response.json().detalles.join(' | ');",
+                  "  pm.expect(detalles).to.include('orden:');",
+                  "  pm.expect(detalles).to.include('precioMin: Debe ser un número no negativo');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener evento",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "description": "Detalle de un evento con sus tipos de entrada. Funciona también con eventos que ya pasaron (en el seed, el 7)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae los tipos de entrada y el organizador sin datos privados', () => {",
+                  "  const evento = pm.response.json();",
+                  "  pm.expect(evento.tiposEntrada).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(evento.organizador).to.have.all.keys('id', 'nombre', 'apellido');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener evento inexistente (404)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "99"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Explica qué no se encontró', () => pm.expect(pm.response.json().error).to.eql('No existe un evento con id 99'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear evento (organizador)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eventos",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Recital de prueba\",\n  \"descripcion\": \"Banda invitada\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [\n    \"https://example.com/flyer.jpg\"\n  ],\n  \"tiposEntrada\": [\n    {\n      \"nombre\": \"Campo\",\n      \"descripcion\": \"De pie\",\n      \"precio\": 20000,\n      \"cupo\": 100\n    },\n    {\n      \"nombre\": \"VIP\",\n      \"descripcion\": \"Con meet & greet\",\n      \"precio\": 60000,\n      \"cupo\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Solo un ORGANIZADOR. El organizador es el usuario del header, nunca un dato del body. La fecha debe ser futura (el pre-request la calcula a 30 días). Requiere al menos un tipo de entrada, sin nombres repetidos, con precio ≥ 0 y cupo entero > 0."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('El organizador es el usuario del header', () => pm.expect(pm.response.json().organizador.id).to.eql(pm.collectionVariables.get('organizadorId')));",
+                  "pm.test('Cada tipo de entrada tiene su id', () => pm.response.json().tiposEntrada.forEach((t) => pm.expect(t.id).to.be.a('string')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear evento como comprador (403)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eventos",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Recital de prueba\",\n  \"descripcion\": \"Banda invitada\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [\n    \"https://example.com/flyer.jpg\"\n  ],\n  \"tiposEntrada\": [\n    {\n      \"nombre\": \"Campo\",\n      \"descripcion\": \"De pie\",\n      \"precio\": 20000,\n      \"cupo\": 100\n    },\n    {\n      \"nombre\": \"VIP\",\n      \"descripcion\": \"Con meet & greet\",\n      \"precio\": 60000,\n      \"cupo\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Un COMPRADOR no puede crear eventos."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Explica el rol necesario', () => pm.expect(pm.response.json().error).to.eql('Esta acción solo la puede realizar un usuario ORGANIZADOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear evento sin identificarse (401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eventos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Recital de prueba\",\n  \"descripcion\": \"Banda invitada\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [\n    \"https://example.com/flyer.jpg\"\n  ],\n  \"tiposEntrada\": [\n    {\n      \"nombre\": \"Campo\",\n      \"descripcion\": \"De pie\",\n      \"precio\": 20000,\n      \"cupo\": 100\n    },\n    {\n      \"nombre\": \"VIP\",\n      \"descripcion\": \"Con meet & greet\",\n      \"precio\": 60000,\n      \"cupo\": 10\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sin el header x-usuario-id."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear evento con datos inválidos (400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/eventos",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"descripcion\": \"Banda invitada\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [\n    \"https://example.com/flyer.jpg\"\n  ],\n  \"tiposEntrada\": [\n    {\n      \"nombre\": \"General\",\n      \"precio\": -5,\n      \"cupo\": 0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Devuelve un detalle por cada campo inválido."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalla los campos', () => {",
+                  "  const detalles = pm.response.json().detalles;",
+                  "  pm.expect(detalles).to.include('nombre: El nombre es obligatorio');",
+                  "  pm.expect(detalles).to.include('tiposEntrada.0.precio: El precio no puede ser negativo');",
+                  "  pm.expect(detalles).to.include('tiposEntrada.0.cupo: El cupo debe ser mayor a 0');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar evento (su organizador)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Los Pericos en el Luna Park (fecha reprogramada)\",\n  \"descripcion\": \"Recital aniversario con todos sus clásicos\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [],\n  \"tiposEntrada\": [\n    {\n      \"id\": \"1\",\n      \"nombre\": \"Campo\",\n      \"descripcion\": \"De pie, frente al escenario\",\n      \"precio\": 38000,\n      \"cupo\": 500\n    },\n    {\n      \"id\": \"2\",\n      \"nombre\": \"Platea\",\n      \"descripcion\": \"Sentado, primer anillo\",\n      \"precio\": 52000,\n      \"cupo\": 200\n    },\n    {\n      \"id\": \"3\",\n      \"nombre\": \"VIP\",\n      \"descripcion\": \"Con meet & greet\",\n      \"precio\": 120000,\n      \"cupo\": 20\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "PUT recibe el evento **completo**, igual que al crearlo. Solo el organizador de ese evento puede editarlo, y solo si todavía no se realizó.\n\n**Tipos de entrada:** los que tienen `id` se modifican y los que no tienen `id` se agregan como nuevos. No se pueden quitar: el body tiene que incluir todos los existentes.\n\nPara agregar un tipo, sumá al array uno sin id, por ejemplo `{ \"nombre\": \"Palco\", \"precio\": 300000, \"cupo\": 5 }`."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Aplica los cambios y conserva los ids de los tipos', () => {",
+                  "  const evento = pm.response.json();",
+                  "  pm.expect(evento.nombre).to.include('reprogramada');",
+                  "  pm.expect(evento.tiposEntrada.slice(0, 3).map((t) => t.id)).to.eql(['1', '2', '3']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar evento de otro organizador (403)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "2",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Los Pericos en el Luna Park (fecha reprogramada)\",\n  \"descripcion\": \"Recital aniversario con todos sus clásicos\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [],\n  \"tiposEntrada\": [\n    {\n      \"id\": \"4\",\n      \"nombre\": \"Platea\",\n      \"precio\": 1,\n      \"cupo\": 1\n    },\n    {\n      \"id\": \"5\",\n      \"nombre\": \"Pullman\",\n      \"precio\": 1,\n      \"cupo\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El evento 2 es de la Productora Sur (usuario 2). Ana (usuario 1) es organizadora, pero no de este evento."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('Solo el organizador del evento puede realizar esta acción'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar evento quitando un tipo de entrada (409)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Los Pericos en el Luna Park (fecha reprogramada)\",\n  \"descripcion\": \"Recital aniversario con todos sus clásicos\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [],\n  \"tiposEntrada\": [\n    {\n      \"id\": \"1\",\n      \"nombre\": \"Campo\",\n      \"descripcion\": \"De pie, frente al escenario\",\n      \"precio\": 38000,\n      \"cupo\": 500\n    },\n    {\n      \"id\": \"2\",\n      \"nombre\": \"Platea\",\n      \"descripcion\": \"Sentado, primer anillo\",\n      \"precio\": 52000,\n      \"cupo\": 200\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Falta el tipo 3 (VIP): los tipos de entrada no se pueden quitar."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Indica qué tipo falta', () => pm.expect(pm.response.json().error).to.include('VIP (id 3)'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar evento que ya se realizó (409)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "7",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Los Pericos en el Luna Park (fecha reprogramada)\",\n  \"descripcion\": \"Recital aniversario con todos sus clásicos\",\n  \"categoriaId\": \"1\",\n  \"fecha\": \"{{fechaFutura}}\",\n  \"multimedia\": [],\n  \"tiposEntrada\": [\n    {\n      \"id\": \"12\",\n      \"nombre\": \"General\",\n      \"precio\": 20000,\n      \"cupo\": 100\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El evento 7 del seed ya pasó: no se puede editar."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const fecha = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('fechaFutura', fecha.toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('No se puede editar un evento que ya se realizó'));"
                 ]
               }
             }
