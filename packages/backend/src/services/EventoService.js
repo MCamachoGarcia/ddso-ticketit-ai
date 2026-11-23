@@ -7,33 +7,57 @@ import {
 } from "../domain/errors/ErroresDeDominio.js";
 import { EventoRepository } from "../repositories/EventoRepository.js";
 import { CompraRepository } from "../repositories/CompraRepository.js";
+import { ReseniaRepository } from "../repositories/ReseniaRepository.js";
 import { CategoriaService } from "./CategoriaService.js";
 import { paginar } from "../utils/paginar.js";
+import { calcularPuntaje } from "../utils/puntaje.js";
 
 // Quita mayúsculas y tildes para que buscar "musica" encuentre "Música"
 const normalizar = (texto) =>
   texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
-// Qué valor se compara según el criterio de orden elegido
+const SIN_PUNTAJE = { promedio: null, cantidad: 0 };
+
+// Qué valor se compara según el criterio de orden elegido. null = sin dato (va siempre al final).
 const VALOR_PARA_ORDENAR = {
   fecha: (evento) => evento.fecha.getTime(),
   precio: (evento) => evento.precioMinimo(),
+  puntaje: (evento, puntajes) => puntajes.get(evento.organizador.id)?.promedio ?? null,
 };
 
 export class EventoService {
-  // Usa el repositorio de compras (no su service) para saber cuántas entradas se vendieron al editar el cupo.
-  // Así EventoService y CompraService no dependen uno del otro.
+  // Usa los repositorios de compras y reseñas (no sus services) para el cupo vendido y el puntaje del organizador.
+  // Así EventoService no depende de CompraService ni de ReseniaService, que sí dependen de él.
   constructor(
     eventoRepository = new EventoRepository(),
     categoriaService = new CategoriaService(),
     compraRepository = new CompraRepository(),
+    reseniaRepository = new ReseniaRepository(),
   ) {
     this.eventoRepository = eventoRepository;
     this.categoriaService = categoriaService;
     this.compraRepository = compraRepository;
+    this.reseniaRepository = reseniaRepository;
   }
 
-  toDTO(evento) {
+  // Puntaje de cada organizador (promedio de las reseñas de todos sus eventos), en una sola pasada
+  async puntajesPorOrganizador() {
+    const resenias = await this.reseniaRepository.findAll();
+    const porOrganizador = new Map();
+    for (const resenia of resenias) {
+      const id = resenia.evento.organizador.id;
+      if (!porOrganizador.has(id)) porOrganizador.set(id, []);
+      porOrganizador.get(id).push(resenia);
+    }
+    return new Map([...porOrganizador].map(([id, lista]) => [id, calcularPuntaje(lista)]));
+  }
+
+  async puntajeDe(organizador) {
+    return calcularPuntaje(await this.reseniaRepository.findByOrganizador(organizador.id));
+  }
+
+  // puntaje: la reputación del organizador, que el comprador ve antes de comprar (C6)
+  toDTO(evento, puntaje = SIN_PUNTAJE) {
     return {
       id: evento.id,
       nombre: evento.nombre,
@@ -46,6 +70,7 @@ export class EventoService {
         id: evento.organizador.id,
         nombre: evento.organizador.nombre,
         apellido: evento.organizador.apellido,
+        puntaje,
       },
       precioDesde: evento.precioMinimo(),
       tiposEntrada: evento.tiposEntrada.map((tipo) => ({
@@ -69,14 +94,25 @@ export class EventoService {
       .filter((evento) => evento.tuPrecioEstaEntre(precioMin, precioMax))
       .filter((evento) => !texto || this.coincideConTexto(evento, texto));
 
-    const valor = VALOR_PARA_ORDENAR[orden];
+    const puntajes = await this.puntajesPorOrganizador();
+    const valor = (evento) => VALOR_PARA_ORDENAR[orden](evento, puntajes);
     const sentido = direccion === "desc" ? -1 : 1;
-    // A igual valor, desempata por fecha para que el orden sea siempre el mismo
-    encontrados.sort(
-      (a, b) => sentido * (valor(a) - valor(b)) || a.fecha.getTime() - b.fecha.getTime(),
-    );
+    const porFecha = (a, b) => a.fecha.getTime() - b.fecha.getTime();
 
-    return paginar(encontrados.map((evento) => this.toDTO(evento)), { page, limit });
+    encontrados.sort((a, b) => {
+      const [valorA, valorB] = [valor(a), valor(b)];
+      // Sin dato (por ejemplo, un organizador sin reseñas) va siempre al final, en cualquier dirección
+      if (valorA === null || valorB === null) {
+        return (valorA === null) - (valorB === null) || porFecha(a, b);
+      }
+      // A igual valor, desempata por fecha para que el orden sea siempre el mismo
+      return sentido * (valorA - valorB) || porFecha(a, b);
+    });
+
+    return paginar(
+      encontrados.map((evento) => this.toDTO(evento, puntajes.get(evento.organizador.id))),
+      { page, limit },
+    );
   };
 
   // Busca en el nombre, la descripción y la categoría: "musica" encuentra los recitales aunque no lo digan
@@ -89,7 +125,8 @@ export class EventoService {
 
   // Detalle de un evento: se puede ver aunque ya haya pasado (por ejemplo, desde una compra)
   getById = async (id) => {
-    return this.toDTO(await this.buscarEvento(id));
+    const evento = await this.buscarEvento(id);
+    return this.toDTO(evento, await this.puntajeDe(evento.organizador));
   };
 
   buscarEvento = async (id) => {
@@ -119,7 +156,7 @@ export class EventoService {
       tiposEntrada: datos.tiposEntrada.map((tipo) => new TipoEntrada(tipo)),
     });
 
-    return this.toDTO(await this.eventoRepository.save(evento));
+    return this.toDTO(await this.eventoRepository.save(evento), await this.puntajeDe(organizador));
   };
 
   // Editar un evento (PUT): recibe el evento completo. Que el usuario sea su organizador lo controla la ruta.
@@ -152,7 +189,7 @@ export class EventoService {
       ),
     });
 
-    return this.toDTO(await this.eventoRepository.update(evento));
+    return this.toDTO(await this.eventoRepository.update(evento), await this.puntajeDe(evento.organizador));
   };
 
   // Los tipos de entrada se pueden modificar y agregar, pero no quitar (decisión 24),

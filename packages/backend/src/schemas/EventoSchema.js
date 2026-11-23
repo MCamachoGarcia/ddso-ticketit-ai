@@ -58,7 +58,8 @@ export const buscarEventosSchema = z
     categoriaId: z.string().trim().optional(),
     precioMin: numeroNoNegativo.optional(),
     precioMax: numeroNoNegativo.optional(),
-    orden: z.enum(["fecha", "precio"]).default("fecha"),
+    // puntaje: el promedio de las reseñas del organizador (decisión 27)
+    orden: z.enum(["fecha", "precio", "puntaje"]).default("fecha"),
     direccion: z.enum(["asc", "desc"]).default("asc"),
     ...parametrosPaginacion,
   })

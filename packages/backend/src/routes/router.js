@@ -3,6 +3,7 @@ import categoriaRouter from "./CategoriaRoutes.js";
 import eventoRouter from "./EventoRoutes.js";
 import compraRouter, { comprasDelEventoRouter } from "./CompraRoutes.js";
 import mensajeRouter from "./MensajeRoutes.js";
+import { reseniasDelEventoRouter, reseniasDelOrganizadorRouter } from "./ReseniaRoutes.js";
 
 const router = express.Router();
 
@@ -15,7 +16,11 @@ router.use("/categorias", categoriaRouter);
 // Compras de un evento (O1): solo para su organizador. Devuelve las compras con su estado y las entradas
 // disponibles de cada tipo. Se monta acá para que EventoRoutes y CompraRoutes no se importen entre sí.
 router.use("/eventos/:id/compras", comprasDelEventoRouter);
+// Reseñas de un evento: verlas es público; reseñar, solo un comprador que usó una entrada
+router.use("/eventos/:id/resenias", reseniasDelEventoRouter);
 router.use("/eventos", eventoRouter);
+// Reputación de un organizador (C6): las reseñas de todos sus eventos y su promedio, pública
+router.use("/organizadores/:id/resenias", reseniasDelOrganizadorRouter);
 // Chat de una compra. Va antes que "/compras" para no pasar dos veces por autenticar
 router.use("/compras/:id/mensajes", mensajeRouter);
 router.use("/compras", compraRouter);

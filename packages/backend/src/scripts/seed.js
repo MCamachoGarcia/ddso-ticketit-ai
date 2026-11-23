@@ -2,6 +2,8 @@ import { Categoria } from "../domain/entities/Categoria.js";
 import { Compra } from "../domain/entities/Compra.js";
 import { EstadoCompra } from "../domain/enums/EstadoCompra.js";
 import { CompraRepository } from "../repositories/CompraRepository.js";
+import { Resenia } from "../domain/entities/Resenia.js";
+import { ReseniaRepository } from "../repositories/ReseniaRepository.js";
 import { Evento } from "../domain/entities/Evento.js";
 import { TipoEntrada } from "../domain/entities/TipoEntrada.js";
 import { Usuario } from "../domain/entities/Usuario.js";
@@ -139,6 +141,15 @@ const COMPRAS = [
     creadaHace: 45,
     pasos: [[EstadoCompra.CONFIRMADA, ORGANIZADOR_DEL_EVENTO, -44], [EstadoCompra.UTILIZADA, ORGANIZADOR_DEL_EVENTO, "evento"]],
   },
+  // Utilizada y todavía sin reseñar: Sofía puede reseñar el recital de otoño
+  {
+    evento: 6,
+    tipo: 0,
+    comprador: S,
+    cantidad: 1,
+    creadaHace: 40,
+    pasos: [[EstadoCompra.CONFIRMADA, ORGANIZADOR_DEL_EVENTO, -39], [EstadoCompra.UTILIZADA, ORGANIZADOR_DEL_EVENTO, "evento"]],
+  },
 ];
 
 // Vacía las listas en memoria y carga los datos de ejemplo. Se llama al iniciar el servidor.
@@ -147,6 +158,7 @@ export async function cargarSeed() {
   UsuarioRepository.limpiar();
   EventoRepository.limpiar();
   CompraRepository.limpiar();
+  ReseniaRepository.limpiar();
 
   const categoriaRepository = new CategoriaRepository();
   const usuarioRepository = new UsuarioRepository();
@@ -202,4 +214,16 @@ export async function cargarSeed() {
   compraConChat.agregarMensaje(ana, "¡Hola Leo! Las puertas abren a las 19 hs.", dentroDe(-3, 11));
   compraConChat.agregarMensaje(leo, "Genial, ¡gracias!", dentroDe(-3, 12));
   await compraRepository.update(compraConChat);
+
+  // Leo usó su entrada del recital de otoño (compra 5) y lo reseñó: Ana tiene puntaje, la Productora no
+  const recitalPasado = eventos[6];
+  await new ReseniaRepository().save(
+    new Resenia({
+      comprador: leo,
+      evento: recitalPasado,
+      puntuacion: 5,
+      detalle: "Un show íntimo y muy bien organizado. ¡Volvería!",
+      fecha: new Date(recitalPasado.fecha.getTime() + 24 * 60 * 60 * 1000),
+    }),
+  );
 }
