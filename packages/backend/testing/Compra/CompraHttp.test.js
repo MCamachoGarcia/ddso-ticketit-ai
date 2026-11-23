@@ -6,7 +6,7 @@ import { cargarSeed } from "../../src/scripts/seed.js";
 // Seed: usuarios 1 Ana y 2 Productora (organizadores), 3 Leo y 4 Sofía (compradores).
 // Evento 1 de Ana: tipos 1 Campo (cupo 500), 2 Platea, 3 VIP (cupo 20). Evento 2 de la Productora. Evento 7 de Ana, ya pasó.
 // Compras: 1 Sofía VIP ev1 PENDIENTE · 2 Leo Campo ev1 CONFIRMADA · 3 Leo ev2 CANCELADA sin pagar
-//          4 Sofía ev4 CANCELADA pagada · 5 Leo ev7 UTILIZADA
+//          4 Sofía ev4 CANCELADA pagada · 5 Leo ev7 UTILIZADA · 6 Sofía ev7 UTILIZADA
 const ANA = "1";
 const PRODUCTORA = "2";
 const LEO = "3";
@@ -27,7 +27,7 @@ describe("API de compras", () => {
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
-        id: "6",
+        id: "7",
         evento: { id: "1" },
         tipoEntrada: { id: "2", nombre: "Platea" },
         cantidad: 2,

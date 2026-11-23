@@ -57,7 +57,7 @@ describe("API de eventos", () => {
     });
 
     it.each([
-      ["orden desconocido", "orden=puntaje", "orden:"],
+      ["orden desconocido", "orden=popularidad", "orden:"],
       ["dirección inválida", "direccion=arriba", "direccion:"],
       ["precio no numérico", "precioMin=barato", "precioMin: Debe ser un número no negativo"],
       ["precioMin mayor a precioMax", "precioMin=100&precioMax=10", "precioMin: precioMin no puede ser mayor a precioMax"],

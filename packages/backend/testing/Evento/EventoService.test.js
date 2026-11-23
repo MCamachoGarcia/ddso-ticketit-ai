@@ -44,6 +44,7 @@ describe("EventoService", () => {
   let repository;
   let categoriaService;
   let compraRepository;
+  let reseniaRepository;
   let service;
 
   beforeEach(() => {
@@ -56,18 +57,63 @@ describe("EventoService", () => {
     };
     categoriaService = { buscarCategoria: jest.fn() };
     compraRepository = { entradasOcupadas: jest.fn().mockResolvedValue(0) };
-    service = new EventoService(repository, categoriaService, compraRepository);
+    reseniaRepository = { findAll: jest.fn().mockResolvedValue([]), findByOrganizador: jest.fn().mockResolvedValue([]) };
+    service = new EventoService(repository, categoriaService, compraRepository, reseniaRepository);
   });
 
   describe("toDTO", () => {
-    it("expone solo los datos públicos del organizador y agrega precioDesde", () => {
-      const dto = service.toDTO(crearEvento({ nombre: "Recital", dias: 10, precios: [5000, 2000] }));
+    it("expone solo los datos públicos del organizador, con su puntaje, y agrega precioDesde", () => {
+      const puntaje = { promedio: 4.5, cantidad: 2 };
+      const dto = service.toDTO(crearEvento({ nombre: "Recital", dias: 10, precios: [5000, 2000] }), puntaje);
 
-      expect(dto.organizador).toEqual({ id: "1", nombre: "Ana", apellido: "Paz" });
+      expect(dto.organizador).toEqual({ id: "1", nombre: "Ana", apellido: "Paz", puntaje });
       expect(dto.categoria).toEqual({ id: "1", nombre: "Música" });
       expect(dto.precioDesde).toBe(2000);
       expect(typeof dto.fecha).toBe("string");
       expect(JSON.stringify(dto)).not.toContain("secreto");
+    });
+
+    it("sin puntaje informa que el organizador no tiene reseñas", () => {
+      const dto = service.toDTO(crearEvento({ nombre: "Recital", dias: 10, precios: [1] }));
+      expect(dto.organizador.puntaje).toEqual({ promedio: null, cantidad: 0 });
+    });
+  });
+
+  describe("buscar ordenando por puntaje del organizador", () => {
+    const otro = (id) => new Usuario({ id, nombre: `Org ${id}`, apellido: "x", rol: RolUsuario.ORGANIZADOR });
+    const reseniaDe = (org, puntuacion) => ({ evento: { organizador: org }, puntuacion });
+
+    beforeEach(() => {
+      const [alto, bajo, sinResenias] = [otro("10"), otro("20"), otro("30")];
+      repository.findAll.mockResolvedValue([
+        Object.assign(crearEvento({ nombre: "Sin reseñas (antes)", dias: 2, precios: [1] }), { organizador: sinResenias }),
+        Object.assign(crearEvento({ nombre: "Puntaje bajo", dias: 5, precios: [1] }), { organizador: bajo }),
+        Object.assign(crearEvento({ nombre: "Puntaje alto", dias: 9, precios: [1] }), { organizador: alto }),
+        Object.assign(crearEvento({ nombre: "Sin reseñas (después)", dias: 7, precios: [1] }), { organizador: sinResenias }),
+      ]);
+      reseniaRepository.findAll.mockResolvedValue([
+        reseniaDe(alto, 5),
+        reseniaDe(alto, 4),
+        reseniaDe(bajo, 2),
+      ]);
+    });
+
+    it.each([
+      ["desc", ["Puntaje alto", "Puntaje bajo", "Sin reseñas (antes)", "Sin reseñas (después)"]],
+      ["asc", ["Puntaje bajo", "Puntaje alto", "Sin reseñas (antes)", "Sin reseñas (después)"]],
+    ])("en %s los organizadores sin reseñas van al final, entre ellos por fecha", async (direccion, esperados) => {
+      const pagina = await service.buscar({ orden: "puntaje", direccion }, AHORA);
+      expect(nombres(pagina)).toEqual(esperados);
+    });
+
+    it("cada evento trae el puntaje de su organizador", async () => {
+      const pagina = await service.buscar({ orden: "puntaje", direccion: "desc" }, AHORA);
+      expect(pagina.resultados.map((evento) => evento.organizador.puntaje)).toEqual([
+        { promedio: 4.5, cantidad: 2 },
+        { promedio: 2, cantidad: 1 },
+        { promedio: null, cantidad: 0 },
+        { promedio: null, cantidad: 0 },
+      ]);
     });
   });
 
