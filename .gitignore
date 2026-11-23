@@ -1,0 +1,15 @@
+.idea
+.vscode
+node_modules/
+/packages/**/node_modules/
+.env
+
+# Enunciado del TP (no se versiona)
+AI_Ticket_It_Enunciado.docx
+
+# Registro de decisiones (uso interno, no se versiona)
+docs/decisiones.md
+
+# Configuración local de asistentes de IA
+.claude/
+AGENTS.md

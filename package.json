@@ -1,0 +1,30 @@
+{
+  "name": "ai-ticket-it",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Ticket It - Plataforma de venta de entradas para eventos (TP DDS UTN FRBA 2C 2026)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start:backend": "npm start --workspace=backend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "start:frontend": "npm start --workspace=frontend",
+    "dev": "concurrently --names backend,frontend \"npm run dev:backend\" \"npm run start:frontend\"",
+    "test": "npm test --workspace=backend",
+    "lint": "eslint .",
+    "format": "prettier . --write"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.31.0",
+    "eslint-plugin-react": "^7.37.5",
+    "globals": "^16.3.0",
+    "jest": "^27.5.1",
+    "prettier": "3.6.2"
+  }
+}
