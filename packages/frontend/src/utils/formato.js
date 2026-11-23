@@ -11,6 +11,7 @@ const FECHA_CORTA = new Intl.DateTimeFormat("es-AR", {
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
+  hour12: false, // 21:00 y no 09:00 p. m., igual que formatearHora
 });
 
 // "2026-12-14T00:00:00.000Z" → "sáb, 13 dic, 21:00" (en la hora local del celular)
@@ -33,3 +34,11 @@ export const formatearHora = (iso) => HORA.format(new Date(iso));
 
 // 4.333 → "4,3"
 export const formatearPuntaje = (promedio) => promedio.toFixed(1).replace(".", ",");
+
+// Cuánto falta para el evento de una compra confirmada (el backend manda null si no corresponde)
+// 0 → "Es hoy", 1 → "Falta 1 día", 12 → "Faltan 12 días"
+export const formatearDiasParaElEvento = (dias) => {
+  if (dias === null || dias === undefined) return null;
+  if (dias === 0) return "Es hoy";
+  return dias === 1 ? "Falta 1 día" : `Faltan ${dias} días`;
+};
