@@ -1,0 +1,19 @@
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, ".env"), quiet: true });
+
+import { app } from "./src/app.js";
+import { cargarSeed } from "./src/scripts/seed.js";
+
+const PORT = process.env.PORT || 8000;
+
+// La persistencia es en memoria: cada vez que arranca el servidor se cargan los datos de ejemplo
+await cargarSeed();
+
+// 0.0.0.0 permite que el celular (en la misma red WiFi) llegue al backend usando la IP de la PC
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Backend escuchando en el puerto ${PORT}`);
+});
