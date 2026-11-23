@@ -59,6 +59,20 @@ describe("CompraRepository (en memoria)", () => {
     expect(await repository.update(Object.assign(nueva(leo, recital, campo, 1), { id: "9" }))).toBeNull();
   });
 
+  it("asigna id a los mensajes nuevos al guardar y al actualizar, únicos entre compras", async () => {
+    const compra = nueva(leo, recital, campo, 1);
+    compra.agregarMensaje(leo, "Hola");
+    await repository.save(compra);
+    compra.agregarMensaje(leo, "¿Hay alguien?");
+    await repository.update(compra);
+    const otra = nueva(sofia, recital, vip, 1);
+    otra.agregarMensaje(sofia, "Consulta");
+    await repository.save(otra);
+
+    expect(compra.mensajes.map((m) => m.id)).toEqual(["1", "2"]);
+    expect(otra.mensajes[0].id).toBe("3");
+  });
+
   it("limpiar vacía la lista y reinicia los ids", async () => {
     await repository.save(nueva(leo, recital, campo, 2));
     CompraRepository.limpiar();

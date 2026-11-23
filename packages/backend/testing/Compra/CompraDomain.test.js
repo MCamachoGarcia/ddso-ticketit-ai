@@ -260,6 +260,24 @@ describe("Compra", () => {
     });
   });
 
+  describe("agregarMensaje", () => {
+    it("agrega el mensaje al chat con su autor y fecha, y lo devuelve", () => {
+      const enviado = new Date("2026-11-23T10:00:00");
+      const mensaje = compra.agregarMensaje(comprador, "¿A qué hora abren?", enviado);
+
+      expect(compra.mensajes).toEqual([mensaje]);
+      expect(mensaje).toMatchObject({ id: null, usuario: comprador, mensaje: "¿A qué hora abren?", enviado });
+    });
+
+    it("se puede escribir en cualquier estado, incluso en una compra cancelada o usada", () => {
+      llevarA(EstadoCompra.CANCELADA);
+      compra.agregarMensaje(comprador, "Cancelé, ¿cuándo me reembolsan?");
+      compra.agregarMensaje(organizador, "En las próximas 48 hs.");
+
+      expect(compra.mensajes.map((m) => m.usuario)).toEqual([comprador, organizador]);
+    });
+  });
+
   describe("ocupaCupo", () => {
     it.each([
       ["PENDIENTE_DE_PAGO", [], true],

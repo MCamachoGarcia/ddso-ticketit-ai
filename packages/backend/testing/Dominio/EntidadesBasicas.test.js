@@ -48,13 +48,13 @@ describe("Entidades básicas del dominio", () => {
     });
   });
 
-  it("Mensaje toma la fecha actual si no se indica y no tiene id", () => {
+  it("Mensaje toma la fecha actual si no se indica y arranca sin id (lo asigna el repositorio)", () => {
     const antes = new Date();
     const mensaje = new Mensaje({ usuario, mensaje: "¿A qué hora abren las puertas?" });
 
     expect(mensaje.usuario).toBe(usuario);
     expect(mensaje.enviado.getTime()).toBeGreaterThanOrEqual(antes.getTime());
-    expect(mensaje).not.toHaveProperty("id");
+    expect(mensaje.id).toBeNull();
   });
 
   it("Resenia guarda comprador, evento, detalle y puntuación", () => {
