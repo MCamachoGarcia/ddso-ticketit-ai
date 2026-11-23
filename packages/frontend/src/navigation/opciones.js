@@ -14,7 +14,7 @@ export const opcionesDePila = {
 // Barra de pestañas de abajo
 export const opcionesDePestanias = {
   ...opcionesDePila,
-  tabBarActiveTintColor: COLORES.marcaOscuro,
+  tabBarActiveTintColor: COLORES.marca,
   tabBarInactiveTintColor: COLORES.tintaSuave,
   tabBarStyle: { backgroundColor: COLORES.blanco },
 };

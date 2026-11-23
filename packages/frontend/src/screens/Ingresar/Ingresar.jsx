@@ -16,12 +16,19 @@ export default function Ingresar() {
 
   return (
     <Pantalla sinEncabezado>
-      <View className="items-center gap-2 pb-8 pt-10">
-        <View className="rounded-2xl bg-marca px-5 py-3">
+      {/* El logo usa el verde vivo de la marca: WCAG exceptúa a los logos del contraste.
+          Para el lector de pantalla es un solo título con el nombre completo. */}
+      <View
+        className="items-center gap-2 pb-8 pt-10"
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel="AI Ticket It, entradas a un click"
+      >
+        <View className="rounded-2xl bg-marca-vivo px-5 py-3">
           <Text className="text-3xl font-extrabold text-white">AI</Text>
         </View>
         <Text className="text-3xl font-extrabold text-tinta">
-          Ticket <Text className="text-marca">It</Text>
+          Ticket <Text className="text-marca-vivo">It</Text>
         </Text>
         <Text className="tracking-widest text-tinta-suave">ENTRADAS A UN CLICK</Text>
       </View>
@@ -34,10 +41,11 @@ export default function Ingresar() {
               key={usuario.id}
               onPress={() => ingresar(usuario)}
               accessibilityRole="button"
+              accessibilityLabel={`Ingresar como ${usuario.nombre} ${usuario.apellido}, ${grupo.titulo.toLowerCase().replace("como ", "")}`}
               className="flex-row items-center gap-3 rounded-2xl bg-white p-4 shadow-sm active:opacity-80"
             >
               <View className="h-11 w-11 items-center justify-center rounded-full bg-marca-claro">
-                <Ionicons name={grupo.icono} size={22} color={COLORES.marcaOscuro} />
+                <Ionicons name={grupo.icono} size={22} color={COLORES.marca} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold text-tinta">

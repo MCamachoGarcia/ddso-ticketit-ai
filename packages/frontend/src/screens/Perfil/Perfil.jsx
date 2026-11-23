@@ -13,7 +13,7 @@ export default function Perfil() {
     <Pantalla>
       <View className="items-center gap-1 rounded-2xl bg-white p-6 shadow-sm">
         <View className="mb-2 h-16 w-16 items-center justify-center rounded-full bg-marca-claro">
-          <Text className="text-2xl font-bold text-marca-oscuro">{usuario.nombre[0]}</Text>
+          <Text className="text-2xl font-bold text-marca">{usuario.nombre[0]}</Text>
         </View>
         <Text className="text-xl font-semibold text-tinta">
           {usuario.nombre} {usuario.apellido}
