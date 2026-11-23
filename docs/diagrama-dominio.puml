@@ -25,6 +25,9 @@ class Usuario {
   - passwordHash: String
   - rol: RolUsuario
   - favoritos: Evento[]
+  + esFavorito(String): Boolean
+  + agregarFavorito(Evento): void
+  + quitarFavorito(String): void
 }
 
 class Categoria {

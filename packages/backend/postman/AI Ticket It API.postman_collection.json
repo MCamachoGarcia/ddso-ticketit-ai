@@ -2052,6 +2052,212 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Favoritos",
+      "description": "Eventos favoritos del comprador (decisión 29). Solo COMPRADOR. Marcar y desmarcar responden **204 sin cuerpo** y son idempotentes: repetirlos no cambia el resultado. En el seed, Leo tiene Hamlet y el Festival de Verano.",
+      "item": [
+        {
+          "name": "Marcar como favorito",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id/favorito",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id",
+                "favorito"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Si ya era favorito, no cambia nada. El evento tiene que existir (si no, 404)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis favoritos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/favoritos?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "favoritos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Los últimos marcados primero, con el mismo formato que la búsqueda y el campo `realizado`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el evento recién marcado, primero', () => pm.expect(pm.response.json().resultados[0].id).to.eql('1'));",
+                  "pm.test('Cada evento indica si ya se realizó', () => pm.response.json().resultados.forEach((e) => pm.expect(e.realizado).to.be.a('boolean')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quitar de favoritos",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id/favorito",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id",
+                "favorito"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Si no era favorito, también responde 204."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar un evento inexistente (404)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/:id/favorito",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                ":id",
+                "favorito"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "99",
+                  "description": "Id del evento"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Favoritos como organizador (403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/eventos/favoritos",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
