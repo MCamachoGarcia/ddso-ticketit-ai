@@ -88,7 +88,8 @@ class Resenia {
   - comprador: Usuario
   - evento: Evento
   - detalle: String
-  - puntuacion: Double
+  - puntuacion: Int
+  - fecha: DateTime
 }
 
 ' ---------- Relaciones ----------

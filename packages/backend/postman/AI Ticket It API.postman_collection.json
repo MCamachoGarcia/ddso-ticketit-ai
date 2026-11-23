@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "246c96aa-1ac0-42b8-9642-721f5cde2f4e",
     "name": "AI Ticket It API",
-    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run dev:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\n**Identidad (provisoria hasta el login)**: las acciones que requieren un usuario mandan el header `x-usuario-id`. Las variables `organizadorId` (1) y `compradorId` (3) apuntan a usuarios del seed.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
+    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run dev:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\n**Identidad (provisoria hasta el login)**: las acciones que requieren un usuario mandan el header `x-usuario-id`. Las variables `organizadorId` (1, Ana), `compradorId` (3, Leo) y `otraCompradoraId` (4, Sofía) apuntan a usuarios del seed.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -22,6 +22,12 @@
       "value": "3",
       "type": "string",
       "description": "Leo Ruiz (COMPRADOR) en el seed"
+    },
+    {
+      "key": "otraCompradoraId",
+      "value": "4",
+      "type": "string",
+      "description": "Sofía Gómez (COMPRADOR) en el seed"
     },
     {
       "key": "fechaFutura",
@@ -318,11 +324,11 @@
           ]
         },
         {
-          "name": "Buscar eventos con parámetros inválidos (400)",
+          "name": "Buscar eventos por puntaje del organizador",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/eventos?orden=puntaje&precioMin=barato",
+              "raw": "{{baseUrl}}/eventos?orden=puntaje&direccion=desc",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -335,12 +341,54 @@
                   "value": "puntaje"
                 },
                 {
+                  "key": "direccion",
+                  "value": "desc"
+                }
+              ]
+            },
+            "description": "Ordena por el promedio de las reseñas del organizador. Los organizadores **sin reseñas van siempre al final**, en cualquier dirección. Cada evento trae `organizador.puntaje`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Los sin reseñas quedan al final', () => {",
+                  "  const promedios = pm.response.json().resultados.map((e) => e.organizador.puntaje.promedio);",
+                  "  const primerNull = promedios.indexOf(null);",
+                  "  if (primerNull >= 0) pm.expect(promedios.slice(primerNull).every((p) => p === null)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar eventos con parámetros inválidos (400)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos?orden=popularidad&precioMin=barato",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos"
+              ],
+              "query": [
+                {
+                  "key": "orden",
+                  "value": "popularidad"
+                },
+                {
                   "key": "precioMin",
                   "value": "barato"
                 }
               ]
             },
-            "description": "Ordenar por puntaje todavía no está disponible (llega con las reseñas). Un precio no numérico también es inválido."
+            "description": "Un orden que no existe y un precio no numérico."
           },
           "event": [
             {
@@ -1596,6 +1644,323 @@
               }
             ],
             "description": "La compra 1 es de Sofía."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reseñas",
+      "description": "Reseñar un evento (C5) y ver la reputación de un organizador (C6). Ver es **público**. Reseñar: solo un COMPRADOR que **usó una entrada** de ese evento, una vez por evento, con puntuación entera de 1 a 5 y un comentario obligatorio.\n\nEn el seed, el evento 7 (de Ana, ya pasó) tiene la reseña de Leo: Ana tiene puntaje 5 y la Productora no tiene reseñas.",
+      "item": [
+        {
+          "name": "Reseñas de un organizador (C6)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/organizadores/1/resenias?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "organizadores",
+                "1",
+                "resenias"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Las reseñas de todos los eventos del organizador, de la más reciente a la más vieja, con su `promedio` y `cantidad`. Sin reseñas, el promedio es null."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae el puntaje del organizador', () => { const b = pm.response.json(); pm.expect(b).to.include.keys('promedio', 'cantidad', 'resenias'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñas de un evento",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/7/resenias?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "7",
+                "resenias"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Las reseñas de un evento puntual, con su promedio."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae el promedio del evento', () => pm.expect(pm.response.json().promedio).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñar un evento (compradora que usó su entrada)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/7/resenias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "7",
+                "resenias"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{otraCompradoraId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 4,\n  \"detalle\": \"Muy buen show, aunque el sonido podría mejorar.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sofía usó su entrada del evento 7 (compra 6 del seed) y todavía no lo reseñó. **Da 201 una sola vez por arranque del backend**: si se repite, responde 409 porque ya lo reseñó. Para volver a probarlo, reiniciar el backend."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('La autora es la compradora identificada', () => pm.expect(pm.response.json().comprador.id).to.eql(pm.collectionVariables.get('otraCompradoraId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñar sin haber usado una entrada (409)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/1/resenias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "1",
+                "resenias"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 5,\n  \"detalle\": \"Todavía no fui\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Leo tiene una compra del evento 1, pero todavía no la usó (el evento no pasó)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('Para reseñar un evento tenés que haber usado una entrada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñar dos veces el mismo evento (409)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/7/resenias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "7",
+                "resenias"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 4,\n  \"detalle\": \"Otra opinión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Leo ya reseñó el evento 7. Para ver una reseña exitosa: reiniciar el backend no alcanza (Leo ya la tiene en el seed); hay que usar otro comprador con una entrada utilizada."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('Ya reseñaste este evento'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñar con datos inválidos (400)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/7/resenias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "7",
+                "resenias"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 7,\n  \"detalle\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalla los campos', () => {",
+                  "  const detalles = pm.response.json().detalles;",
+                  "  pm.expect(detalles).to.include('puntuacion: La puntuación debe estar entre 1 y 5');",
+                  "  pm.expect(detalles).to.include('detalle: El comentario es obligatorio');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reseñar como organizador (403)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/7/resenias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "7",
+                "resenias"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntuacion\": 5,\n  \"detalle\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "event": [
             {
