@@ -28,6 +28,12 @@
       "value": "",
       "type": "string",
       "description": "La completa el pre-request de Crear evento"
+    },
+    {
+      "key": "compraId",
+      "value": "",
+      "type": "string",
+      "description": "La guarda 'Comprar entradas' y la usan las transiciones"
     }
   ],
   "item": [
@@ -856,6 +862,554 @@
                 "exec": [
                   "pm.test('Responde 409', () => pm.response.to.have.status(409));",
                   "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('No se puede editar un evento que ya se realizó'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Compras",
+      "description": "Comprar (C7), mis compras (C1), detalle, transiciones de estado y compras de un evento (O1).\n\n**Ciclo completo:** correr la carpeta en orden. 'Comprar entradas' guarda el id en `compraId` y los requests siguientes confirman, intentan usar, cancelan y reembolsan esa misma compra.\n\n**Quién hace cada transición:** confirmar el pago, marcar como usada y reembolsar → el organizador del evento. Cancelar → quien hizo la compra.",
+      "item": [
+        {
+          "name": "Comprar entradas (comprador)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/compras",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventoId\": \"1\",\n  \"tipoEntradaId\": \"2\",\n  \"cantidad\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Solo un COMPRADOR, que queda como comprador de la compra. La compra nace PENDIENTE_DE_PAGO y reserva el cupo. El tipo de entrada tiene que ser de ese evento, el evento no tiene que haber pasado y la cantidad no puede superar las disponibles."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Queda PENDIENTE_DE_PAGO', () => pm.expect(pm.response.json().estado).to.eql('PENDIENTE_DE_PAGO'));",
+                  "pm.test('El total es precio por cantidad', () => { const c = pm.response.json(); pm.expect(c.total).to.eql(c.precioUnitario * c.cantidad); });",
+                  "pm.collectionVariables.set('compraId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comprar más de lo disponible (409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/compras",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventoId\": \"1\",\n  \"tipoEntradaId\": \"3\",\n  \"cantidad\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "El VIP del evento 1 tiene cupo 20."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Indica cuántas quedan', () => pm.expect(pm.response.json().error).to.include('quedan'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comprar como organizador (403)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/compras",
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventoId\": \"1\",\n  \"tipoEntradaId\": \"2\",\n  \"cantidad\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar el pago (organizador del evento)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/confirmar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "confirmar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "No hay pasarela de pagos: el organizador del evento confirma una por una las compras pendientes. Solo antes de que empiece el evento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda CONFIRMADA', () => pm.expect(pm.response.json().estado).to.eql('CONFIRMADA'));",
+                  "pm.test('Trae los días que faltan', () => pm.expect(pm.response.json().diasParaElEvento).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar como comprador (403)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/confirmar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "confirmar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar como usada antes del evento (409)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/utilizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "utilizar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "El organizador marca la entrada como usada en el ingreso. Recién se puede desde la hora de inicio del evento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Explica el motivo', () => pm.expect(pm.response.json().error).to.eql('No se puede usar una entrada antes de que empiece el evento'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelar (comprador)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/cancelar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "cancelar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Solo quien hizo la compra, si no está UTILIZADA y el evento no empezó. Libera el cupo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda CANCELADA', () => pm.expect(pm.response.json().estado).to.eql('CANCELADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reembolsar (organizador del evento)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/reembolsar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "reembolsar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Solo si la compra se había pagado (pasó por CONFIRMADA)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Queda REEMBOLSADA', () => pm.expect(pm.response.json().estado).to.eql('REEMBOLSADA'));",
+                  "pm.test('El historial tiene los 4 pasos', () => pm.expect(pm.response.json().historial.map((h) => h.estado)).to.eql(['PENDIENTE_DE_PAGO', 'CONFIRMADA', 'CANCELADA', 'REEMBOLSADA']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reembolsar de nuevo (409)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/compras/{{compraId}}/reembolsar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "{{compraId}}",
+                "reembolsar"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "REEMBOLSADA es un estado final."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Informa la transición inválida', () => pm.expect(pm.response.json().error).to.eql('No se puede pasar una compra de REEMBOLSADA a REEMBOLSADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis compras (comprador)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/compras?estado=CONFIRMADA&page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "CONFIRMADA",
+                  "description": "Opcional: PENDIENTE_DE_PAGO, CONFIRMADA, UTILIZADA, CANCELADA o REEMBOLSADA",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "Las compras del comprador identificado, de la más reciente a la más vieja. Las CONFIRMADAS traen `diasParaElEvento`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Son todas del comprador', () => pm.response.json().resultados.forEach((c) => pm.expect(c.comprador.id).to.eql(pm.collectionVariables.get('compradorId'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver una compra (participante)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/compras/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "2"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "La pueden ver su comprador y el organizador del evento. En el seed, la 2 es de Leo en un evento de Ana."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae el historial', () => pm.expect(pm.response.json().historial).to.be.an('array').that.is.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ver una compra ajena (403)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/compras/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "compras",
+                "1"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{compradorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "La compra 1 es de Sofía."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compras de un evento (su organizador)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/1/compras?estado=PENDIENTE_DE_PAGO&page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "1",
+                "compras"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE_DE_PAGO",
+                  "description": "Opcional: filtra por estado",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "O1: las compras del evento con su estado y, por cada tipo de entrada, el cupo, las ocupadas y las disponibles. Solo para el organizador de ese evento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Trae la disponibilidad de cada tipo', () => pm.response.json().disponibilidad.forEach((d) => pm.expect(d.disponibles).to.eql(d.cupo - d.ocupadas)));",
+                  "pm.test('Trae las compras paginadas', () => pm.expect(pm.response.json().compras).to.have.all.keys('resultados', 'page', 'limit', 'total', 'totalPages'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compras de un evento ajeno (403)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/eventos/2/compras",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "2",
+                "compras"
+              ]
+            },
+            "header": [
+              {
+                "key": "x-usuario-id",
+                "value": "{{organizadorId}}",
+                "description": "Identidad provisoria hasta el login (decisión 23)"
+              }
+            ],
+            "description": "El evento 2 es de la Productora Sur."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403', () => pm.response.to.have.status(403));"
                 ]
               }
             }
