@@ -165,6 +165,54 @@ describe("API de eventos", () => {
 
   // Evento 1 del seed: organizador 1 (Ana), tipos 1 Campo, 2 Platea y 3 VIP.
   // Evento 2: organizador 2. Evento 7: organizador 1, ya pasó (tipo 12).
+  // Ana (1) organiza los eventos 1, 4 y 5 (próximos) y 7 (realizado). La Productora (2) organiza 2, 3 y 6.
+  describe("GET /eventos/mios", () => {
+    const mios = (usuarioId, query = "") => {
+      const pedido = request(app).get(`/eventos/mios${query}`);
+      return usuarioId ? pedido.set("x-usuario-id", usuarioId) : pedido;
+    };
+
+    it("el organizador ve todos sus eventos, también los que ya se realizaron", async () => {
+      const res = await mios(ORGANIZADOR);
+
+      expect(res.status).toBe(200);
+      expect(res.body.total).toBe(4);
+      expect(res.body.resultados.every((evento) => evento.organizador.id === ORGANIZADOR)).toBe(true);
+      expect(res.body.resultados.map((evento) => [evento.id, evento.realizado])).toEqual([
+        ["4", false],
+        ["1", false],
+        ["5", false],
+        ["7", true],
+      ]);
+    });
+
+    it("filtra los realizados", async () => {
+      const res = await mios(ORGANIZADOR, "?cuando=realizados");
+      expect(res.body.resultados.map((evento) => evento.nombre)).toEqual(["Recital acústico de otoño"]);
+    });
+
+    it("cada organizador ve solo los suyos", async () => {
+      const res = await mios("2");
+      expect(res.body.resultados.map((evento) => evento.id).sort()).toEqual(["2", "3", "6"]);
+    });
+
+    it("no se confunde con el detalle de un evento con id 'mios'", async () => {
+      expect((await mios(ORGANIZADOR)).body).toHaveProperty("resultados");
+    });
+
+    it.each([
+      ["sin identificarse", null, 401],
+      ["un comprador", COMPRADOR, 403],
+    ])("%s → %i", async (_quien, usuarioId, codigo) => {
+      expect((await mios(usuarioId)).status).toBe(codigo);
+    });
+
+    it("responde 400 con un filtro desconocido", async () => {
+      const res = await mios(ORGANIZADOR, "?cuando=ayer");
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe("PUT /eventos/:id", () => {
     const edicionValida = () => ({
       nombre: "Los Pericos - fecha reprogramada",

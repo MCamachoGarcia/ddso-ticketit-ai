@@ -24,6 +24,11 @@ router.route("/")
   .get((req, res) => eventoController.buscar(req, res))
   .post(autenticar, autorizarRol(RolUsuario.ORGANIZADOR), (req, res) => eventoController.crear(req, res));
 
+// Mis eventos: los del organizador identificado. Tiene que ir ANTES que "/:id": si no, Express tomaría
+// "mios" como el id de un evento y respondería "No existe un evento con id mios"
+router.get("/mios", autenticar, autorizarRol(RolUsuario.ORGANIZADOR), (req, res) =>
+  eventoController.misEventos(req, res));
+
 // Editar: rol ORGANIZADOR y, además, ser el organizador de ESE evento
 router.route("/:id")
   .get((req, res) => eventoController.getById(req, res))

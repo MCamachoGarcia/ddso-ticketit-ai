@@ -391,4 +391,45 @@ describe("EventoService", () => {
       expect(repository.update).not.toHaveBeenCalled();
     });
   });
+
+  describe("misEventos", () => {
+    const otroOrganizador = new Usuario({ id: "2", nombre: "Otra", apellido: "x", rol: RolUsuario.ORGANIZADOR });
+
+    beforeEach(() => {
+      repository.findAll.mockResolvedValue([
+        crearEvento({ nombre: "Próximo lejano", dias: 30, precios: [1] }),
+        crearEvento({ nombre: "Realizado hace mucho", dias: -60, precios: [1] }),
+        crearEvento({ nombre: "Próximo cercano", dias: 3, precios: [1] }),
+        Object.assign(crearEvento({ nombre: "De otro organizador", dias: 5, precios: [1] }), { organizador: otroOrganizador }),
+        crearEvento({ nombre: "Realizado hace poco", dias: -2, precios: [1] }),
+      ]);
+      reseniaRepository.findByOrganizador.mockResolvedValue([{ puntuacion: 4 }]);
+    });
+
+    it("devuelve solo los del organizador: primero los próximos (el más cercano primero) y después los realizados (el más reciente primero)", async () => {
+      const pagina = await service.misEventos(organizador, {}, AHORA);
+
+      expect(nombres(pagina)).toEqual(["Próximo cercano", "Próximo lejano", "Realizado hace poco", "Realizado hace mucho"]);
+      expect(pagina.resultados.map((evento) => evento.realizado)).toEqual([false, false, true, true]);
+    });
+
+    it.each([
+      ["proximos", ["Próximo cercano", "Próximo lejano"]],
+      ["realizados", ["Realizado hace poco", "Realizado hace mucho"]],
+    ])("filtra los %s", async (cuando, esperados) => {
+      expect(nombres(await service.misEventos(organizador, { cuando }, AHORA))).toEqual(esperados);
+    });
+
+    it("cada evento trae el puntaje del organizador, y viene paginado", async () => {
+      const pagina = await service.misEventos(organizador, { page: 2, limit: 3 }, AHORA);
+
+      expect(pagina).toMatchObject({ page: 2, limit: 3, total: 4, totalPages: 2 });
+      expect(pagina.resultados[0].organizador.puntaje).toEqual({ promedio: 4, cantidad: 1 });
+      expect(reseniaRepository.findByOrganizador).toHaveBeenCalledWith("1");
+    });
+
+    it("un organizador sin eventos recibe una lista vacía", async () => {
+      expect((await service.misEventos(otroOrganizador, { cuando: "realizados" }, AHORA)).total).toBe(0);
+    });
+  });
 });

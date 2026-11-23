@@ -115,6 +115,23 @@ export class EventoService {
     );
   };
 
+  // Mis eventos (organizador): los suyos, incluidos los que ya se realizaron (para ver sus compras y reseñas).
+  // Primero los próximos, del más cercano al más lejano; después los realizados, del más reciente al más viejo.
+  misEventos = async (organizador, { cuando = "todos", page, limit }, ahora = new Date()) => {
+    const eventos = await this.eventoRepository.findAll();
+    const suyos = eventos.filter((evento) => evento.organizador.id === organizador.id);
+
+    const proximos = suyos.filter((evento) => !evento.yaSeRealizo(ahora)).sort((a, b) => a.fecha - b.fecha);
+    const realizados = suyos.filter((evento) => evento.yaSeRealizo(ahora)).sort((a, b) => b.fecha - a.fecha);
+    const elegidos = { todos: [...proximos, ...realizados], proximos, realizados }[cuando];
+
+    const puntaje = await this.puntajeDe(organizador);
+    return paginar(
+      elegidos.map((evento) => ({ ...this.toDTO(evento, puntaje), realizado: evento.yaSeRealizo(ahora) })),
+      { page, limit },
+    );
+  };
+
   // Busca en el nombre, la descripción y la categoría: "musica" encuentra los recitales aunque no lo digan
   coincideConTexto(evento, texto) {
     const buscado = normalizar(texto);

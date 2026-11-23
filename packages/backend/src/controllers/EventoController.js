@@ -1,5 +1,10 @@
 import { EventoService } from "../services/EventoService.js";
-import { actualizarEventoSchema, buscarEventosSchema, crearEventoSchema } from "../schemas/EventoSchema.js";
+import {
+  actualizarEventoSchema,
+  buscarEventosSchema,
+  crearEventoSchema,
+  misEventosSchema,
+} from "../schemas/EventoSchema.js";
 import { validar } from "../schemas/validar.js";
 
 export class EventoController {
@@ -10,6 +15,11 @@ export class EventoController {
   buscar = async (req, res) => {
     const filtros = validar(buscarEventosSchema, req.query);
     res.status(200).json(await this.eventoService.buscar(filtros));
+  };
+
+  misEventos = async (req, res) => {
+    const filtros = validar(misEventosSchema, req.query);
+    res.status(200).json(await this.eventoService.misEventos(req.usuario, filtros));
   };
 
   getById = async (req, res) => {

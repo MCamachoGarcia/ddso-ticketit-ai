@@ -46,6 +46,14 @@ const eventoSchema = (schemaTipo) =>
 export const crearEventoSchema = eventoSchema(tipoEntradaSchema);
 export const actualizarEventoSchema = eventoSchema(tipoEntradaEditableSchema);
 
+// Mis eventos (organizador): todos, solo los próximos o solo los que ya se realizaron (decisión 28)
+export const misEventosSchema = z
+  .object({
+    cuando: z.enum(["todos", "proximos", "realizados"]).default("todos"),
+    ...parametrosPaginacion,
+  })
+  .strict();
+
 // Los query params llegan como texto: se acepta un número no negativo escrito como tal ("1500" o "1500.50")
 const numeroNoNegativo = z
   .string()
