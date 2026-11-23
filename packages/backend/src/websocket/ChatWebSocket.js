@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
+import { AuthService } from "../services/AuthService.js";
 import { permisosService as permisosPorDefecto } from "../services/PermisosService.js";
 
 // "ws" se carga como CommonJS: con import, Node y Jest 27 exponen cosas distintas
@@ -11,17 +11,17 @@ const { WebSocket, WebSocketServer } = require("ws");
 // por acá solo se RECIBEN: el servidor empuja cada mensaje nuevo a quienes tienen abierto el chat de esa compra.
 //
 // Protocolo (JSON), siempre en este orden:
-//   cliente → { tipo: "autenticar", usuarioId }   servidor → { tipo: "autenticado", usuario }
+//   cliente → { tipo: "autenticar", token }       servidor → { tipo: "autenticado", usuario }
 //   cliente → { tipo: "suscribir", compraId }      servidor → { tipo: "suscripto", compraId }
 //   servidor → { tipo: "mensaje", compraId, mensaje }   (cada vez que alguien escribe)
 //   cliente → { tipo: "desuscribir", compraId }    servidor → { tipo: "desuscripto", compraId }
 //   servidor → { tipo: "error", error }            (si algo falla; la conexión sigue abierta)
 //
-// La identidad va en el primer mensaje y no en la URL, como recomienda la clase: la URL queda en los logs.
-// Con el login, usuarioId se reemplaza por el token.
+// El token va en el primer mensaje y no en la URL, como recomienda la clase: la URL queda en los logs.
+// Es el mismo JWT del header Authorization de la API (decisión 42).
 export class ChatWebSocket {
-  constructor(usuarioRepository = new UsuarioRepository(), permisosService = permisosPorDefecto) {
-    this.usuarioRepository = usuarioRepository;
+  constructor(authService = new AuthService(), permisosService = permisosPorDefecto) {
+    this.authService = authService;
     this.permisosService = permisosService;
     // compraId → conjunto de conexiones que tienen abierto ese chat
     this.suscripciones = new Map();
@@ -50,7 +50,7 @@ export class ChatWebSocket {
       throw new Error("El mensaje no es un JSON válido");
     }
 
-    if (pedido.tipo === "autenticar") return this.autenticar(socket, pedido.usuarioId);
+    if (pedido.tipo === "autenticar") return this.autenticar(socket, pedido.token);
     if (!socket.usuario) throw new Error("Primero hay que autenticarse");
     if (pedido.tipo === "suscribir") return this.suscribir(socket, String(pedido.compraId));
     if (pedido.tipo === "desuscribir") {
@@ -60,9 +60,10 @@ export class ChatWebSocket {
     throw new Error(`Tipo de mensaje desconocido: ${pedido.tipo}`);
   }
 
-  async autenticar(socket, usuarioId) {
-    const usuario = usuarioId ? await this.usuarioRepository.findById(usuarioId) : null;
-    if (!usuario) throw new Error("No se pudo identificar al usuario");
+  // Misma verificación que el middleware autenticar: firma, vencimiento y que el usuario exista
+  async autenticar(socket, token) {
+    if (!token) throw new Error("Falta el token");
+    const usuario = await this.authService.usuarioDelToken(String(token));
     socket.usuario = usuario;
     this.enviar(socket, { tipo: "autenticado", usuario: { id: usuario.id, nombre: usuario.nombre } });
   }

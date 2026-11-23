@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import request from "supertest";
+import { bearer } from "../ayudas/autenticacion.js";
 import { app } from "../../src/app.js";
 import { cargarSeed } from "../../src/scripts/seed.js";
 
@@ -12,7 +13,7 @@ const SOFIA = "4";
 
 const resenar = (eventoId, body, usuarioId = LEO) => {
   const pedido = request(app).post(`/eventos/${eventoId}/resenias`);
-  if (usuarioId) pedido.set("x-usuario-id", usuarioId);
+  if (usuarioId) pedido.set("Authorization", bearer(usuarioId));
   return pedido.send(body);
 };
 

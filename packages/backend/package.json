@@ -14,9 +14,11 @@
   "license": "ISC",
   "description": "API de AI Ticket It (Express, persistencia en memoria)",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "ws": "^8.23.0",
     "zod": "^4.6.2"
   },

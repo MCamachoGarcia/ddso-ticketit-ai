@@ -5,6 +5,7 @@ import compraRouter, { comprasDelEventoRouter } from "./CompraRoutes.js";
 import mensajeRouter from "./MensajeRoutes.js";
 import { reseniasDelEventoRouter, reseniasDelOrganizadorRouter } from "./ReseniaRoutes.js";
 import { favoritoDelEventoRouter, misFavoritosRouter } from "./FavoritoRoutes.js";
+import authRouter from "./AuthRoutes.js";
 
 const router = express.Router();
 
@@ -13,6 +14,8 @@ router.get("/", (_req, res) => {
   res.status(200).json({ name: "API AI Ticket It" });
 });
 
+// Registro, login y "quién soy" (decisión 42)
+router.use("/auth", authRouter);
 router.use("/categorias", categoriaRouter);
 // Compras de un evento (O1): solo para su organizador. Devuelve las compras con su estado y las entradas
 // disponibles de cada tipo. Se monta acá para que EventoRoutes y CompraRoutes no se importen entre sí.

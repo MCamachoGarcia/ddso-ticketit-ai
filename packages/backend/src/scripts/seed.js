@@ -1,3 +1,5 @@
+import bcrypt from "bcryptjs";
+import { RONDAS_BCRYPT } from "../config/autenticacion.js";
 import { Categoria } from "../domain/entities/Categoria.js";
 import { Compra } from "../domain/entities/Compra.js";
 import { EstadoCompra } from "../domain/enums/EstadoCompra.js";
@@ -21,7 +23,7 @@ const CATEGORIAS = [
   { nombre: "Stand-up", descripcion: "Comedia en vivo" },
 ];
 
-// El passwordHash queda vacío hasta implementar el login (decisión 23)
+// Usuarios de ejemplo: todos con la contraseña CONTRASENIA_DEMO ("demo1234"), hasheada al cargar el seed
 const USUARIOS = [
   { nombre: "Ana", apellido: "Paz", email: "ana.organizadora@demo.com", rol: RolUsuario.ORGANIZADOR },
   { nombre: "Productora", apellido: "Sur", email: "productora.sur@demo.com", rol: RolUsuario.ORGANIZADOR },
@@ -152,6 +154,12 @@ const COMPRAS = [
   },
 ];
 
+export const CONTRASENIA_DEMO = "demo1234";
+
+// El hash se calcula una sola vez: bcrypt es lento a propósito, y los tests cargan el seed antes de cada caso
+let hashDemo = null;
+const hashDeLaContraseniaDemo = async () => (hashDemo ??= await bcrypt.hash(CONTRASENIA_DEMO, RONDAS_BCRYPT));
+
 // Vacía las listas en memoria y carga los datos de ejemplo. Se llama al iniciar el servidor.
 export async function cargarSeed() {
   CategoriaRepository.limpiar();
@@ -170,9 +178,11 @@ export async function cargarSeed() {
     categorias.push(await categoriaRepository.save(new Categoria(datos)));
   }
 
+  // Todos los usuarios de ejemplo tienen la misma contraseña, para probar fácil con cada rol (decisión 42)
+  const passwordHash = await hashDeLaContraseniaDemo();
   const usuarios = [];
   for (const datos of USUARIOS) {
-    usuarios.push(await usuarioRepository.save(new Usuario({ ...datos, passwordHash: null })));
+    usuarios.push(await usuarioRepository.save(new Usuario({ ...datos, passwordHash })));
   }
 
   const eventos = [];

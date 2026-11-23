@@ -1,67 +1,114 @@
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useMutation } from "@tanstack/react-query";
 import { Pantalla } from "../../components/Pantalla/Pantalla";
-import { USUARIOS_DEMO, useSesion } from "../../context/SesionContext";
-import { COLORES } from "../../styles/colores";
+import { Logo } from "../../components/Logo/Logo";
+import { Campo } from "../../components/Campo/Campo";
+import { CampoContrasenia } from "../../components/CampoContrasenia/CampoContrasenia";
+import { Boton } from "../../components/Boton/Boton";
+import { Aviso } from "../../components/Aviso/Aviso";
+import { Chip } from "../../components/Chip/Chip";
+import { useSesion } from "../../context/SesionContext";
+import { mensajeError } from "../../services/errores";
 
-const GRUPOS = [
-  { rol: "COMPRADOR", titulo: "Como comprador", icono: "ticket-outline" },
-  { rol: "ORGANIZADOR", titulo: "Como organizador", icono: "calendar-outline" },
+const EMAIL_VALIDO = /^\S+@\S+\.\S+$/;
+
+// Usuarios del seed, para probar rápido cada rol (todos con la contraseña demo1234). Completan el formulario, no ingresan solos.
+const USUARIOS_DE_PRUEBA = [
+  { nombre: "Leo (comprador)", email: "leo.comprador@demo.com" },
+  { nombre: "Ana (organizadora)", email: "ana.organizadora@demo.com" },
 ];
+const CONTRASENIA_DE_PRUEBA = "demo1234";
 
-// PROVISORIO hasta el login (decisión 23): se elige con qué usuario del seed entrar.
-// Con el login real, esta pantalla pasa a tener email y contraseña.
-export default function Ingresar() {
-  const { ingresar } = useSesion();
+// Pantalla de inicio sin sesión (decisión 42): email y contraseña. El token queda guardado y la app recuerda la sesión.
+export default function Ingresar({ navigation }) {
+  const { ingresar, aviso } = useSesion();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errores, setErrores] = useState({});
+
+  const ingreso = useMutation({ mutationFn: () => ingresar({ email: email.trim(), password }) });
+
+  const enviar = () => {
+    const encontrados = {};
+    if (!EMAIL_VALIDO.test(email.trim())) encontrados.email = "Escribí un email válido";
+    if (!password) encontrados.password = "Escribí tu contraseña";
+    setErrores(encontrados);
+    if (Object.keys(encontrados).length === 0) ingreso.mutate();
+  };
+
+  const completarDePrueba = (usuario) => {
+    setEmail(usuario.email);
+    setPassword(CONTRASENIA_DE_PRUEBA);
+    setErrores({});
+    ingreso.reset();
+  };
 
   return (
     <Pantalla sinEncabezado>
-      {/* El logo usa el verde vivo de la marca: WCAG exceptúa a los logos del contraste.
-          Para el lector de pantalla es un solo título con el nombre completo. */}
-      <View
-        className="items-center gap-2 pb-8 pt-10"
-        accessible
-        accessibilityRole="header"
-        accessibilityLabel="AI Ticket It, entradas a un click"
-      >
-        <View className="rounded-2xl bg-marca-vivo px-5 py-3">
-          <Text className="text-3xl font-extrabold text-white">AI</Text>
+      <Logo />
+
+      <View className="gap-4">
+        {/* Por qué volvió al ingreso sin haber salido (por ejemplo, venció la sesión) */}
+        {!ingreso.error && <Aviso texto={aviso} tipo="info" />}
+
+        <Campo
+          etiqueta="Email"
+          valor={email}
+          onCambiar={(v) => {
+            setEmail(v);
+            setErrores(({ email: _, ...resto }) => resto);
+          }}
+          error={errores.email}
+          placeholder="nombre@ejemplo.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+        />
+        <CampoContrasenia
+          valor={password}
+          onCambiar={(v) => {
+            setPassword(v);
+            setErrores(({ password: _, ...resto }) => resto);
+          }}
+          error={errores.password}
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={enviar}
+        />
+
+        {/* El 401 del backend: siempre "Email o contraseña incorrectos", sin decir cuál de los dos */}
+        <Aviso texto={ingreso.error && mensajeError(ingreso.error)} />
+
+        <Boton onPress={enviar} cargando={ingreso.isPending}>
+          Ingresar
+        </Boton>
+
+        <View className="flex-row flex-wrap items-center justify-center gap-1">
+          <Text className="text-base text-tinta-suave">¿No tenés cuenta?</Text>
+          <Pressable
+            onPress={() => navigation.navigate("Registro")}
+            accessibilityRole="link"
+            className="min-h-11 justify-center px-1 active:opacity-70"
+          >
+            <Text className="text-base font-semibold text-marca">Crear cuenta</Text>
+          </Pressable>
         </View>
-        <Text className="text-3xl font-extrabold text-tinta">
-          Ticket <Text className="text-marca-vivo">It</Text>
-        </Text>
-        <Text className="tracking-widest text-tinta-suave">ENTRADAS A UN CLICK</Text>
       </View>
 
-      {GRUPOS.map((grupo) => (
-        <View key={grupo.rol} className="mb-6 gap-3">
-          <Text className="text-sm font-semibold uppercase text-tinta-suave">{grupo.titulo}</Text>
-          {USUARIOS_DEMO.filter((usuario) => usuario.rol === grupo.rol).map((usuario) => (
-            <Pressable
-              key={usuario.id}
-              onPress={() => ingresar(usuario)}
-              accessibilityRole="button"
-              accessibilityLabel={`Ingresar como ${usuario.nombre} ${usuario.apellido}, ${grupo.titulo.toLowerCase().replace("como ", "")}`}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-4 shadow-sm active:opacity-80"
-            >
-              <View className="h-11 w-11 items-center justify-center rounded-full bg-marca-claro">
-                <Ionicons name={grupo.icono} size={22} color={COLORES.marca} />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-tinta">
-                  {usuario.nombre} {usuario.apellido}
-                </Text>
-                <Text className="text-sm text-tinta-suave">Usuario de prueba #{usuario.id}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={COLORES.tintaSuave} />
-            </Pressable>
+      {/* Ayuda para la demo: los usuarios del seed */}
+      <View className="mt-6 gap-2 rounded-2xl border border-dashed border-gray-300 p-4">
+        <Text className="text-sm font-semibold text-tinta">Usuarios de prueba</Text>
+        <Text className="text-xs text-tinta-suave">Completan el formulario. Contraseña: {CONTRASENIA_DE_PRUEBA}</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {USUARIOS_DE_PRUEBA.map((usuario) => (
+            <Chip key={usuario.email} texto={usuario.nombre} onPress={() => completarDePrueba(usuario)} />
           ))}
         </View>
-      ))}
-
-      <Text className="text-center text-xs text-tinta-suave">
-        Versión de prueba: el ingreso con email y contraseña llega con el login.
-      </Text>
+      </View>
     </Pantalla>
   );
 }

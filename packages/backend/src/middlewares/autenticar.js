@@ -1,26 +1,23 @@
-import { UsuarioRepository } from "../repositories/UsuarioRepository.js";
+import { AuthService } from "../services/AuthService.js";
 import { NoAutenticadoError, SinPermisoError } from "../errors/ErroresDeAutorizacion.js";
 
-const usuarioRepository = new UsuarioRepository();
+const authService = new AuthService();
 
-// PROVISORIO hasta implementar el login con JWT (decisión 23): el usuario se identifica con el header
-// x-usuario-id. Cuando llegue el JWT solo cambia esta función; las rutas y los controllers siguen igual.
+// Autenticación (clase 10, decisión 42): ¿quién sos? Lee el token del header
+// "Authorization: Bearer <token>", verifica la firma y el vencimiento y deja al usuario en req.usuario.
+// Sin token, con un token inválido o vencido: 401. Las rutas y los controllers no cambiaron respecto del header provisorio.
 export async function autenticar(req, _res, next) {
-  const usuarioId = req.get("x-usuario-id");
-  if (!usuarioId) {
-    throw new NoAutenticadoError("Falta identificar al usuario (header x-usuario-id)");
+  const encabezado = req.get("authorization") ?? "";
+  const [tipo, token] = encabezado.split(" ");
+  if (tipo !== "Bearer" || !token) {
+    throw new NoAutenticadoError("Tenés que iniciar sesión (falta el header Authorization: Bearer <token>)");
   }
 
-  const usuario = await usuarioRepository.findById(usuarioId);
-  if (!usuario) {
-    throw new NoAutenticadoError(`No existe un usuario con id ${usuarioId}`);
-  }
-
-  req.usuario = usuario;
+  req.usuario = await authService.usuarioDelToken(token);
   next();
 }
 
-// Se usa DESPUÉS de autenticar: deja pasar solo a los roles indicados
+// Autorización por rol (el requireRole de la clase): ¿qué podés hacer? Se usa DESPUÉS de autenticar.
 export const autorizarRol = (...roles) => (req, _res, next) => {
   if (!roles.includes(req.usuario?.rol)) {
     throw new SinPermisoError(`Esta acción solo la puede realizar un usuario ${roles.join(" o ")}`);

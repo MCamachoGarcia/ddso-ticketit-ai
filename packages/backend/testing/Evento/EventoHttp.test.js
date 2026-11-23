@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import request from "supertest";
+import { bearer } from "../ayudas/autenticacion.js";
 import { app } from "../../src/app.js";
 import { cargarSeed } from "../../src/scripts/seed.js";
 
@@ -23,7 +24,7 @@ const eventoValido = () => ({
 
 const crear = (body, usuarioId = ORGANIZADOR) => {
   const pedido = request(app).post("/eventos");
-  if (usuarioId) pedido.set("x-usuario-id", usuarioId);
+  if (usuarioId) pedido.set("Authorization", bearer(usuarioId));
   return pedido.send(body);
 };
 
@@ -114,7 +115,7 @@ describe("API de eventos", () => {
     it("responde 401 si no se identifica al usuario", async () => {
       const res = await crear(eventoValido(), null);
       expect(res.status).toBe(401);
-      expect(res.body.error).toBe("Falta identificar al usuario (header x-usuario-id)");
+      expect(res.body.error).toBe("Tenés que iniciar sesión (falta el header Authorization: Bearer <token>)");
     });
 
     it("responde 401 si el usuario no existe", async () => {
@@ -169,7 +170,7 @@ describe("API de eventos", () => {
   describe("GET /eventos/mios", () => {
     const mios = (usuarioId, query = "") => {
       const pedido = request(app).get(`/eventos/mios${query}`);
-      return usuarioId ? pedido.set("x-usuario-id", usuarioId) : pedido;
+      return usuarioId ? pedido.set("Authorization", bearer(usuarioId)) : pedido;
     };
 
     it("el organizador ve todos sus eventos, también los que ya se realizaron", async () => {
@@ -230,7 +231,7 @@ describe("API de eventos", () => {
 
     const editar = (eventoId, body, usuarioId = ORGANIZADOR) => {
       const pedido = request(app).put(`/eventos/${eventoId}`);
-      if (usuarioId) pedido.set("x-usuario-id", usuarioId);
+      if (usuarioId) pedido.set("Authorization", bearer(usuarioId));
       return pedido.send(body);
     };
 

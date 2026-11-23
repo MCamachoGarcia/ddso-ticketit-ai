@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import request from "supertest";
+import { bearer } from "../ayudas/autenticacion.js";
 import { app } from "../../src/app.js";
 import { cargarSeed } from "../../src/scripts/seed.js";
 
@@ -12,7 +13,7 @@ const PRODUCTORA = "2";
 const LEO = "3";
 const SOFIA = "4";
 
-const como = (usuarioId, pedido) => (usuarioId ? pedido.set("x-usuario-id", usuarioId) : pedido);
+const como = (usuarioId, pedido) => (usuarioId ? pedido.set("Authorization", bearer(usuarioId)) : pedido);
 const comprar = (body, usuarioId = LEO) => como(usuarioId, request(app).post("/compras")).send(body);
 const accion = (compraId, nombre, usuarioId) => como(usuarioId, request(app).post(`/compras/${compraId}/${nombre}`));
 

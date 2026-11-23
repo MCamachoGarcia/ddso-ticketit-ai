@@ -11,6 +11,12 @@ export class UsuarioRepository {
     return usuarios.find((usuario) => usuario.id === String(id)) ?? null;
   }
 
+  // Para el login y para no registrar dos cuentas con el mismo email (se comparan en minúsculas)
+  async findByEmail(email) {
+    const buscado = String(email).trim().toLowerCase();
+    return usuarios.find((usuario) => usuario.email.toLowerCase() === buscado) ?? null;
+  }
+
   async save(usuario) {
     usuario.id = String(siguienteId++);
     usuarios.push(usuario);

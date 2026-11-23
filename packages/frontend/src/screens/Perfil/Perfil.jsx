@@ -18,11 +18,12 @@ export default function Perfil() {
         <Text className="text-xl font-semibold text-tinta">
           {usuario.nombre} {usuario.apellido}
         </Text>
+        <Text className="text-tinta-suave">{usuario.email}</Text>
         <Text className="text-tinta-suave">{NOMBRE_DEL_ROL[usuario.rol]}</Text>
       </View>
 
       <Boton variante="secundario" className="mt-6" onPress={salir}>
-        Cambiar de usuario
+        Cerrar sesión
       </Boton>
 
       {/* Ayuda para probar en el celular: a qué backend se está conectando la app */}

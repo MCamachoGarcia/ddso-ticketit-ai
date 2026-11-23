@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "246c96aa-1ac0-42b8-9642-721f5cde2f4e",
     "name": "AI Ticket It API",
-    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run dev:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\n**Identidad (provisoria hasta el login)**: las acciones que requieren un usuario mandan el header `x-usuario-id`. Las variables `organizadorId` (1, Ana), `compradorId` (3, Leo) y `otraCompradoraId` (4, Sofía) apuntan a usuarios del seed.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
+    "description": "Colección para probar y documentar la API de AI Ticket It.\n\n**Cómo usarla**\n1. Levantar el backend: `npm run start:backend` (escucha en el puerto 8000).\n2. Importar este archivo en Postman (Import → File).\n3. Si el backend corre en otra PC o puerto, cambiar la variable `baseUrl` de la colección.\n\n**Autenticación (JWT)**: correr primero la carpeta *Autenticación*. Sus tres logins guardan `tokenOrganizador` (Ana), `tokenComprador` (Leo) y `tokenOtraCompradora` (Sofía), y los demás pedidos los mandan en el header `Authorization: Bearer <token>`. El token vence en 2 horas: si responde 401, volver a correr los logins. Todos los usuarios del seed tienen la contraseña `demo1234` (variable `contraseniaDemo`). Las variables `organizadorId`, `compradorId` y `otraCompradoraId` siguen para comparar ids en los tests.\n\nLos datos viven en memoria: cada vez que se reinicia el backend se vuelve a cargar el seed.\n\n**Formato de errores**: `{ error, detalles?, timestamp }`.\n\n**Paginación** (todos los listados, salvo las categorías): `?page=` y `?limit=` (por defecto 1 y 10, máximo 50). Respuesta: `{ resultados, page, limit, total, totalPages }`.\n\nCada request tiene tests: se puede correr toda la colección con el Runner para verificar la API.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -40,6 +40,36 @@
       "value": "",
       "type": "string",
       "description": "La guarda 'Comprar entradas' y la usan las transiciones"
+    },
+    {
+      "key": "contraseniaDemo",
+      "value": "demo1234",
+      "type": "string",
+      "description": "La contraseña de todos los usuarios del seed"
+    },
+    {
+      "key": "tokenOrganizador",
+      "value": "",
+      "type": "string",
+      "description": "Lo guarda 'Ingresar como organizadora (Ana)'"
+    },
+    {
+      "key": "tokenComprador",
+      "value": "",
+      "type": "string",
+      "description": "Lo guarda 'Ingresar como comprador (Leo)'"
+    },
+    {
+      "key": "tokenOtraCompradora",
+      "value": "",
+      "type": "string",
+      "description": "Lo guarda 'Ingresar como compradora (Sofía)'"
+    },
+    {
+      "key": "emailNuevo",
+      "value": "",
+      "type": "string",
+      "description": "Lo completa el pre-request de 'Registrarse'"
     }
   ],
   "item": [
@@ -106,6 +136,274 @@
                   "  pm.expect(body.error).to.eql('No existe la ruta GET /no-existe');",
                   "  pm.expect(body.timestamp).to.be.a('string');",
                   "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Autenticación",
+      "description": "Correr primero: los tres logins guardan los tokens que usan las demás carpetas. JWT firmado con { sub, rol } que vence en 2 horas (decisión 42).",
+      "item": [
+        {
+          "name": "Ingresar como organizadora (Ana)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ana.organizadora@demo.com\",\n  \"password\": \"{{contraseniaDemo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Devuelve { token, usuario }. El token se guarda en la variable tokenOrganizador y lo usan los demás pedidos en el header Authorization: Bearer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es ORGANIZADOR', () => pm.expect(pm.response.json().usuario.rol).to.eql('ORGANIZADOR'));",
+                  "pm.test('No devuelve el hash de la contraseña', () => pm.expect(pm.response.json().usuario.passwordHash).to.be.undefined);",
+                  "pm.collectionVariables.set('tokenOrganizador', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar como comprador (Leo)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"leo.comprador@demo.com\",\n  \"password\": \"{{contraseniaDemo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Devuelve { token, usuario }. El token se guarda en la variable tokenComprador y lo usan los demás pedidos en el header Authorization: Bearer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es COMPRADOR', () => pm.expect(pm.response.json().usuario.rol).to.eql('COMPRADOR'));",
+                  "pm.test('No devuelve el hash de la contraseña', () => pm.expect(pm.response.json().usuario.passwordHash).to.be.undefined);",
+                  "pm.collectionVariables.set('tokenComprador', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar como compradora (Sofía)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sofia.compradora@demo.com\",\n  \"password\": \"{{contraseniaDemo}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Devuelve { token, usuario }. El token se guarda en la variable tokenOtraCompradora y lo usan los demás pedidos en el header Authorization: Bearer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es COMPRADOR', () => pm.expect(pm.response.json().usuario.rol).to.eql('COMPRADOR'));",
+                  "pm.test('No devuelve el hash de la contraseña', () => pm.expect(pm.response.json().usuario.passwordHash).to.be.undefined);",
+                  "pm.collectionVariables.set('tokenOtraCompradora', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar con contraseña incorrecta (401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"leo.comprador@demo.com\",\n  \"password\": \"otra-cosa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Mismo mensaje que con un email que no existe: no revela qué emails tienen cuenta."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Mensaje genérico', () => pm.expect(pm.response.json().error).to.eql('Email o contraseña incorrectos'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrarse (201)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/registro",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Caro\",\n  \"apellido\": \"Díaz\",\n  \"email\": \"{{emailNuevo}}\",\n  \"password\": \"clave-segura\",\n  \"rol\": \"COMPRADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Crea la cuenta con el rol elegido (COMPRADOR u ORGANIZADOR) y ya devuelve { token, usuario }. Contraseña de 8 caracteres o más."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('emailNuevo', `caro.${Date.now()}@demo.com`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Devuelve un token', () => pm.expect(pm.response.json().token).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrarse con un email existente (409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/registro",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Leo\",\n  \"apellido\": \"Otro\",\n  \"email\": \"leo.comprador@demo.com\",\n  \"password\": \"clave-segura\",\n  \"rol\": \"COMPRADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quién soy",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}"
+              }
+            ],
+            "description": "El usuario del token. La app lo usa al abrirse para saber si la sesión guardada sigue vigente."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es Leo', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('compradorId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quién soy sin token (401)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "header": []
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quién soy con un token inválido (401)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer no-es-un-jwt"
+              }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401', () => pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -512,9 +810,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Los eventos del organizador identificado, **incluidos los que ya se realizaron** (para ver sus compras y reseñas). Primero los próximos, del más cercano al más lejano, y después los realizados, del más reciente al más viejo. Cada evento trae `realizado`."
@@ -540,9 +838,9 @@
             "url": "{{baseUrl}}/eventos/mios",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ]
           },
@@ -565,9 +863,9 @@
             "url": "{{baseUrl}}/eventos",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -579,7 +877,7 @@
                 }
               }
             },
-            "description": "Solo un ORGANIZADOR. El organizador es el usuario del header, nunca un dato del body. La fecha debe ser futura (el pre-request la calcula a 30 días). Requiere al menos un tipo de entrada, sin nombres repetidos, con precio ≥ 0 y cupo entero > 0."
+            "description": "Solo un ORGANIZADOR. El organizador es el usuario del token, nunca un dato del body. La fecha debe ser futura (el pre-request la calcula a 30 días). Requiere al menos un tipo de entrada, sin nombres repetidos, con precio ≥ 0 y cupo entero > 0."
           },
           "event": [
             {
@@ -598,7 +896,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 201', () => pm.response.to.have.status(201));",
-                  "pm.test('El organizador es el usuario del header', () => pm.expect(pm.response.json().organizador.id).to.eql(pm.collectionVariables.get('organizadorId')));",
+                  "pm.test('El organizador es el usuario del token', () => pm.expect(pm.response.json().organizador.id).to.eql(pm.collectionVariables.get('organizadorId')));",
                   "pm.test('Cada tipo de entrada tiene su id', () => pm.response.json().tiposEntrada.forEach((t) => pm.expect(t.id).to.be.a('string')));"
                 ]
               }
@@ -612,9 +910,9 @@
             "url": "{{baseUrl}}/eventos",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -665,7 +963,7 @@
                 }
               }
             },
-            "description": "Sin el header x-usuario-id."
+            "description": "Sin el header Authorization."
           },
           "event": [
             {
@@ -696,9 +994,9 @@
             "url": "{{baseUrl}}/eventos",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -763,9 +1061,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -829,9 +1127,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -891,9 +1189,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -953,9 +1251,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1005,9 +1303,9 @@
             "url": "{{baseUrl}}/compras",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1043,9 +1341,9 @@
             "url": "{{baseUrl}}/compras",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1079,9 +1377,9 @@
             "url": "{{baseUrl}}/compras",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1123,9 +1421,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "No hay pasarela de pagos: el organizador del evento confirma una por una las compras pendientes. Solo antes de que empiece el evento."
@@ -1161,9 +1459,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ]
           },
@@ -1196,9 +1494,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "El organizador marca la entrada como usada en el ingreso. Recién se puede desde la hora de inicio del evento."
@@ -1233,9 +1531,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Solo quien hizo la compra, si no está UTILIZADA y el evento no empezó. Libera el cupo."
@@ -1270,9 +1568,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Solo si la compra se había pagado (pasó por CONFIRMADA)."
@@ -1308,9 +1606,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "REEMBOLSADA es un estado final."
@@ -1359,9 +1657,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Las compras del comprador identificado, de la más reciente a la más vieja. Las CONFIRMADAS traen `diasParaElEvento`."
@@ -1395,9 +1693,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "La pueden ver su comprador y el organizador del evento. En el seed, la 2 es de Leo en un evento de Ana."
@@ -1431,9 +1729,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "La compra 1 es de Sofía."
@@ -1483,9 +1781,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "O1: las compras del evento con su estado y, por cada tipo de entrada, el cupo, las ocupadas y las disponibles. Solo para el organizador de ese evento."
@@ -1521,9 +1819,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "El evento 2 es de la Productora Sur."
@@ -1582,9 +1880,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Los últimos mensajes en orden cronológico. `hayAnteriores` indica si se pueden cargar más con `antes`."
@@ -1623,9 +1921,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1670,9 +1968,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1715,9 +2013,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "La compra 1 es de Sofía."
@@ -1837,9 +2135,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{otraCompradoraId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOtraCompradora}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1883,9 +2181,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1929,9 +2227,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -1975,9 +2273,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -2024,9 +2322,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "body": {
@@ -2081,9 +2379,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Si ya era favorito, no cambia nada. El evento tiene que existir (si no, 404)."
@@ -2126,9 +2424,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Los últimos marcados primero, con el mismo formato que la búsqueda y el campo `realizado`."
@@ -2171,9 +2469,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ],
             "description": "Si no era favorito, también responde 204."
@@ -2214,9 +2512,9 @@
             },
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{compradorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenComprador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ]
           },
@@ -2239,9 +2537,9 @@
             "url": "{{baseUrl}}/eventos/favoritos",
             "header": [
               {
-                "key": "x-usuario-id",
-                "value": "{{organizadorId}}",
-                "description": "Identidad provisoria hasta el login (decisión 23)"
+                "key": "Authorization",
+                "value": "Bearer {{tokenOrganizador}}",
+                "description": "Token del login (carpeta Autenticación, decisión 42)"
               }
             ]
           },

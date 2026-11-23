@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import request from "supertest";
+import { bearer } from "../ayudas/autenticacion.js";
 import { app } from "../../src/app.js";
 import { cargarSeed } from "../../src/scripts/seed.js";
 
@@ -8,7 +9,7 @@ const ANA = "1";
 const LEO = "3";
 const SOFIA = "4";
 
-const como = (usuarioId, pedido) => (usuarioId ? pedido.set("x-usuario-id", usuarioId) : pedido);
+const como = (usuarioId, pedido) => (usuarioId ? pedido.set("Authorization", bearer(usuarioId)) : pedido);
 const favoritos = (usuarioId) => como(usuarioId, request(app).get("/eventos/favoritos"));
 const marcar = (eventoId, usuarioId = LEO) => como(usuarioId, request(app).put(`/eventos/${eventoId}/favorito`));
 const desmarcar = (eventoId, usuarioId = LEO) => como(usuarioId, request(app).delete(`/eventos/${eventoId}/favorito`));
