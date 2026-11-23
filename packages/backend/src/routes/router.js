@@ -4,6 +4,7 @@ import eventoRouter from "./EventoRoutes.js";
 import compraRouter, { comprasDelEventoRouter } from "./CompraRoutes.js";
 import mensajeRouter from "./MensajeRoutes.js";
 import { reseniasDelEventoRouter, reseniasDelOrganizadorRouter } from "./ReseniaRoutes.js";
+import { favoritoDelEventoRouter, misFavoritosRouter } from "./FavoritoRoutes.js";
 
 const router = express.Router();
 
@@ -18,6 +19,9 @@ router.use("/categorias", categoriaRouter);
 router.use("/eventos/:id/compras", comprasDelEventoRouter);
 // Reseñas de un evento: verlas es público; reseñar, solo un comprador que usó una entrada
 router.use("/eventos/:id/resenias", reseniasDelEventoRouter);
+// Favoritos del comprador. "/eventos/favoritos" va antes que "/eventos": si no, "favoritos" se tomaría como id
+router.use("/eventos/favoritos", misFavoritosRouter);
+router.use("/eventos/:id/favorito", favoritoDelEventoRouter);
 router.use("/eventos", eventoRouter);
 // Reputación de un organizador (C6): las reseñas de todos sus eventos y su promedio, pública
 router.use("/organizadores/:id/resenias", reseniasDelOrganizadorRouter);

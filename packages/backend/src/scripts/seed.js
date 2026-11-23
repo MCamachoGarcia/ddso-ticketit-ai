@@ -215,6 +215,11 @@ export async function cargarSeed() {
   compraConChat.agregarMensaje(leo, "Genial, ¡gracias!", dentroDe(-3, 12));
   await compraRepository.update(compraConChat);
 
+  // Leo tiene dos eventos en favoritos: Hamlet y el Festival de Verano
+  leo.agregarFavorito(eventos[1]);
+  leo.agregarFavorito(eventos[4]);
+  await usuarioRepository.update(leo);
+
   // Leo usó su entrada del recital de otoño (compra 5) y lo reseñó: Ana tiene puntaje, la Productora no
   const recitalPasado = eventos[6];
   await new ReseniaRepository().save(

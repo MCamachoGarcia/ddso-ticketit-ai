@@ -17,6 +17,13 @@ export class UsuarioRepository {
     return usuario;
   }
 
+  async update(usuario) {
+    const posicion = usuarios.findIndex((guardado) => guardado.id === usuario.id);
+    if (posicion === -1) return null;
+    usuarios[posicion] = usuario;
+    return usuario;
+  }
+
   // Vacía la lista y reinicia los ids. Lo usan el seed y los tests para arrancar desde cero.
   static limpiar() {
     usuarios.length = 0;
