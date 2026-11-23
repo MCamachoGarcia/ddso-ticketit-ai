@@ -23,7 +23,13 @@ export function Pantalla({ children, cargando = false, error = null, onReintenta
   else if (error) contenido = <MensajeDeError error={error} onReintentar={onReintentar} />;
 
   const cuerpo = scroll ? (
-    <ScrollView className="flex-1" contentContainerClassName="flex-grow p-4" keyboardShouldPersistTaps="handled">
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="flex-grow p-4"
+      keyboardShouldPersistTaps="handled"
+      // iOS: al abrirse el teclado deja lugar abajo, para poder llegar a los últimos campos de un formulario
+      automaticallyAdjustKeyboardInsets
+    >
       {contenido}
     </ScrollView>
   ) : (
