@@ -1,5 +1,6 @@
 import express from "express";
 import categoriaRouter from "./CategoriaRoutes.js";
+import eventoRouter from "./EventoRoutes.js";
 
 const router = express.Router();
 
@@ -9,5 +10,6 @@ router.get("/", (_req, res) => {
 });
 
 router.use("/categorias", categoriaRouter);
+router.use("/eventos", eventoRouter);
 
 export default router;

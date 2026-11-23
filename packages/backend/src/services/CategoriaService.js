@@ -22,10 +22,15 @@ export class CategoriaService {
   };
 
   getById = async (id) => {
+    return this.toDTO(await this.buscarCategoria(id));
+  };
+
+  // Devuelve la entidad (no el DTO): la usan otros services, como EventoService al crear un evento
+  buscarCategoria = async (id) => {
     const categoria = await this.categoriaRepository.findById(id);
     if (!categoria) {
       throw new NoEncontradoError(`No existe una categoría con id ${id}`);
     }
-    return this.toDTO(categoria);
+    return categoria;
   };
 }
