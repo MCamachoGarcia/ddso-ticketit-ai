@@ -13,6 +13,9 @@ export function usarToken(token) {
   tokenActual = token;
 }
 
+// El token de la sesión, para lo que no pasa por axios (el WebSocket del chat)
+export const tokenEnUso = () => tokenActual;
+
 // La sesión registra qué hacer si el backend responde 401 a un pedido con token: cerrar la sesión
 export function alResponderNoAutenticado(callback) {
   alVencerLaSesion = callback;

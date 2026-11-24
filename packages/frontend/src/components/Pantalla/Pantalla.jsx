@@ -1,4 +1,6 @@
-import { ScrollView, View } from "react-native";
+import { useContext } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { HeaderHeightContext } from "@react-navigation/elements";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { EstadoDeCarga, MensajeDeError } from "../Estados/Estados";
 
@@ -17,6 +19,8 @@ import { EstadoDeCarga, MensajeDeError } from "../Estados/Estados";
  */
 export function Pantalla({ children, cargando = false, error = null, onReintentar, scroll = true, sinEncabezado = false, pie }) {
   const { bottom } = useSafeAreaInsets();
+  // Cuánto ocupa la barra de título de la navegación (0 si no hay): el teclado se mide desde arriba de la pantalla
+  const altoDelEncabezado = useContext(HeaderHeightContext) ?? 0;
 
   let contenido = children;
   if (cargando) contenido = <EstadoDeCarga />;
@@ -43,7 +47,7 @@ export function Pantalla({ children, cargando = false, error = null, onReintenta
     </View>
   );
 
-  return sinEncabezado ? (
+  const pantalla = sinEncabezado ? (
     <SafeAreaView className="flex-1 bg-fondo" edges={["top"]}>
       {cuerpo}
       {conPie}
@@ -53,5 +57,14 @@ export function Pantalla({ children, cargando = false, error = null, onReintenta
       {cuerpo}
       {conPie}
     </View>
+  );
+
+  // Android dibuja la app "de borde a borde" (Expo SDK 54+): el sistema ya no achica la pantalla cuando aparece
+  // el teclado, así que se deja lugar a mano para que no tape los campos ni el pie. En iOS ya lo hace el ScrollView.
+  if (Platform.OS !== "android") return pantalla;
+  return (
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={altoDelEncabezado} className="flex-1 bg-fondo">
+      {pantalla}
+    </KeyboardAvoidingView>
   );
 }

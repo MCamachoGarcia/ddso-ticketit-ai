@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLORES } from "../../styles/colores";
@@ -15,8 +15,8 @@ export function HojaInferior({ visible, titulo, onCerrar, children }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
-      {/* Si se abre el teclado, la hoja sube para que no tape los campos */}
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end">
+      {/* Si se abre el teclado, la hoja sube para que no tape los campos (en iOS y en Android, que es "de borde a borde") */}
+      <KeyboardAvoidingView behavior="padding" className="flex-1 justify-end">
         {/* El fondo oscuro: tocarlo cierra la hoja */}
         <Pressable
           className="absolute inset-0 bg-black/40"
